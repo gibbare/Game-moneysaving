@@ -29,9 +29,9 @@
       <p class="logo-sub">Lär dig hantera pengar och bygga en framtid!</p>
     </div>
     <div class="welcome-features">
-      <div class="feature-item">🏠 Betala hyra &amp; mat varje månad</div>
+      <div class="feature-item">🏠 Betala hyra &amp; mat varje dag</div>
       <div class="feature-item">💼 Välj jobb med olika lön</div>
-      <div class="feature-item">⚡ Möt oväntade händelser</div>
+      <div class="feature-item">🎬 Kompisar lockar dig att spendera!</div>
       <div class="feature-item">🎯 Nå dina sparmål!</div>
     </div>
     <button class="btn btn-primary btn-xl pulse-btn" onclick="showScreen('profiles')">
@@ -49,9 +49,7 @@
   </div>
   <div class="screen-body">
     <div id="profiles-list" class="profiles-grid"></div>
-
     <div class="divider-text">— skapa ny spelare —</div>
-
     <div class="new-profile-card card">
       <h3>✨ Ny spelare</h3>
       <p class="card-sub">Välj din avatar:</p>
@@ -92,7 +90,7 @@
     <h2>Vad sparar du till?</h2>
   </div>
   <div class="screen-body">
-    <p class="screen-intro">Ett sparmål hjälper dig att hålla motivationen uppe!</p>
+    <p class="screen-intro">Välj ett mål — det gör det roligare att spara!</p>
     <div id="goals-grid" class="goals-grid"></div>
     <div id="custom-goal-form" class="custom-goal-form card" style="display:none">
       <h3>⭐ Eget sparmål</h3>
@@ -115,31 +113,31 @@
     </div>
     <div class="topbar-month" id="top-month">Månad 1/12</div>
     <div class="topbar-controls">
-      <button class="btn-icon" onclick="toggleSound()" id="sound-btn">🔊</button>
+      <button class="btn-icon" onclick="toggleMusic()" id="music-btn" title="Musik">🎵</button>
+      <button class="btn-icon" onclick="toggleSound()" id="sound-btn" title="Ljud">🔊</button>
       <button class="btn-icon danger" onclick="confirmQuit()">✕</button>
     </div>
   </div>
 
-  <!-- Balance Card -->
-  <div class="balance-card card card-gold">
-    <div class="balance-label">💰 Totalt sparade</div>
-    <div class="balance-amount" id="balance-display">2 000 kr</div>
-    <div class="balance-sub" id="balance-month-change"></div>
-  </div>
+  <!-- Balance + Goal row -->
+  <div class="hero-row">
+    <!-- Balance (left) -->
+    <div class="balance-card card card-gold">
+      <div class="balance-label">🏦 På kontot</div>
+      <div class="balance-amount" id="balance-display">2 000 kr</div>
+      <div class="balance-sub" id="balance-month-change"></div>
+    </div>
 
-  <!-- Goal Progress -->
-  <div class="goal-section card" id="goal-section" style="display:none">
-    <div class="goal-header">
-      <span id="goal-emoji-display">🎯</span>
-      <span id="goal-name-display">Sparmål</span>
-      <span class="goal-percent" id="goal-percent-display">0%</span>
-    </div>
-    <div class="progress-track">
-      <div class="progress-fill goal-fill" id="goal-progress-fill" style="width:0%"></div>
-    </div>
-    <div class="goal-amounts">
-      <span id="goal-current-display" class="goal-cur">0 kr</span>
-      <span id="goal-target-display" class="goal-tgt">/ 0 kr</span>
+    <!-- Goal bar (right) — hidden if no goal -->
+    <div class="goal-bar-card card" id="goal-section" style="display:none">
+      <div class="goal-bar-target" id="goal-target-display">0 kr</div>
+      <div class="goal-bar-track">
+        <div class="goal-bar-fill" id="goal-progress-fill" style="height:0%"></div>
+        <div class="goal-bar-emoji" id="goal-emoji-display">🎯</div>
+      </div>
+      <div class="goal-bar-current" id="goal-current-display">0 kr</div>
+      <div class="goal-bar-pct" id="goal-percent-display">0%</div>
+      <div class="goal-bar-name" id="goal-name-display">Mål</div>
     </div>
   </div>
 
@@ -158,58 +156,56 @@
     </div>
   </div>
 
-  <!-- Month Progress -->
-  <div class="month-section">
-    <div class="month-row">
-      <span id="month-name-display">Januari 2025</span>
-      <span id="month-time-display" class="month-time">60 sek kvar</span>
+  <!-- Month Calendar -->
+  <div class="calendar-section card">
+    <div class="calendar-header">
+      <span id="month-name-display" class="cal-month-name">Januari 2025</span>
+      <span id="month-time-display" class="cal-time-left">60 sek kvar</span>
     </div>
-    <div class="progress-track month-track">
-      <div class="progress-fill month-fill" id="month-progress-fill" style="width:0%"></div>
-    </div>
+    <div id="calendar-grid" class="calendar-grid"></div>
   </div>
 
   <!-- Monthly Overview -->
   <div class="overview-card card">
     <div class="overview-header" onclick="toggleOverview(this)">
-      <span>📊 Månadsöversikt</span>
+      <span>📊 Vad har hänt denna månad?</span>
       <span class="toggle-arrow">▼</span>
     </div>
     <div class="overview-body" id="overview-body">
       <div class="ov-row positive-row">
-        <span>💰 Bruttolön</span><span id="ov-gross">+0 kr</span>
+        <span>💰 Vad du tjänade</span><span id="ov-gross">0 kr</span>
       </div>
       <div class="ov-row negative-row">
-        <span>🏛️ Skatt (30%)</span><span id="ov-tax">−0 kr</span>
+        <span>🏛️ Skatt till staten (30%)</span><span id="ov-tax">0 kr</span>
       </div>
       <div class="ov-row neutral-row">
-        <span>💵 Nettolön</span><span id="ov-net-income">0 kr</span>
+        <span>💵 Pengar kvar efter skatt</span><span id="ov-net-income">0 kr</span>
       </div>
       <div class="ov-divider"></div>
       <div class="ov-row negative-row">
-        <span>🏠 Hyra</span><span id="ov-rent">−4 000 kr</span>
+        <span>🏠 Hyra</span><span>−4 000 kr</span>
       </div>
       <div class="ov-row negative-row">
-        <span>🍕 Mat</span><span id="ov-food">−2 500 kr</span>
+        <span>🍽️ Mat du ätit</span><span id="ov-food">0 kr</span>
       </div>
       <div id="ov-recurring-rows"></div>
       <div class="ov-row negative-row" id="ov-events-row" style="display:none">
-        <span>🎭 Händelser</span><span id="ov-events">−0 kr</span>
+        <span>🎉 Saker du köpt</span><span id="ov-events">0 kr</span>
       </div>
       <div class="ov-divider"></div>
       <div class="ov-row net-row">
-        <span><b>📋 Netto denna månad</b></span><span id="ov-net"><b>0 kr</b></span>
+        <span><b>📊 Hur det gick totalt</b></span><span id="ov-net"><b>0 kr</b></span>
       </div>
     </div>
   </div>
 
   <!-- Event Log -->
   <div class="log-section">
-    <div class="log-title">📜 Händelselogg</div>
+    <div class="log-title">📜 Vad som hände</div>
     <div id="event-log" class="event-log"></div>
   </div>
 
-  <!-- Spacer for interaction banner -->
+  <!-- Spacer -->
   <div style="height:120px"></div>
 
 </div><!-- end screen-game -->
@@ -223,13 +219,14 @@
       <div id="int-amount" class="int-amount">+1 800 kr</div>
       <div class="int-timer-track"><div id="int-timer-fill" class="int-timer-fill"></div></div>
     </div>
-    <button class="btn-accept" id="interaction-btn" onclick="acceptInteraction()">TAP!</button>
+    <button class="btn-accept" id="interaction-btn" onclick="acceptInteraction()">TRYCK!</button>
   </div>
 </div>
 
 <!-- ═══════════════════════════ EVENT OVERLAY ═══════════════════════════ -->
 <div id="overlay-event" class="overlay" style="display:none">
   <div class="overlay-box">
+    <div class="pause-pill">⏸ Månaden är pausad</div>
     <div id="ev-emoji" class="ev-emoji">🎭</div>
     <h2 id="ev-title">Händelse!</h2>
     <p id="ev-desc" class="ev-desc">...</p>
@@ -243,12 +240,13 @@
     <div class="sum-emoji">📅</div>
     <h2 id="sum-title">Månad 1 klar!</h2>
     <div class="sum-stats">
-      <div class="sum-row"><span>💰 Nettoinkomst</span><span id="sum-income" class="positive">+0 kr</span></div>
-      <div class="sum-row"><span>🏠 Fasta utgifter</span><span id="sum-fixed" class="negative">−0 kr</span></div>
-      <div class="sum-row" id="sum-events-row"><span>🎭 Händelsekostnader</span><span id="sum-events" class="negative">−0 kr</span></div>
+      <div class="sum-row"><span>💵 Pengar du fick hem</span><span id="sum-income" class="positive">0 kr</span></div>
+      <div class="sum-row"><span>🍽️ Mat du ätit</span><span id="sum-food" class="negative">0 kr</span></div>
+      <div class="sum-row"><span>🏠 Hyra + abonnemang</span><span id="sum-fixed" class="negative">0 kr</span></div>
+      <div class="sum-row" id="sum-events-row"><span>🎉 Saker du köpte</span><span id="sum-events" class="negative">0 kr</span></div>
       <div class="sum-divider"></div>
-      <div class="sum-row sum-result"><span><b>📊 Månadens resultat</b></span><span id="sum-result">+0 kr</span></div>
-      <div class="sum-row sum-total"><span><b>🏦 Totalt sparat</b></span><span id="sum-total" class="gold">0 kr</span></div>
+      <div class="sum-row sum-result"><span><b>📊 Hur det gick</b></span><span id="sum-result">0 kr</span></div>
+      <div class="sum-row sum-total"><span><b>🏦 Totalt på kontot</b></span><span id="sum-total" class="gold">0 kr</span></div>
     </div>
     <div id="sum-tip" class="sum-tip"></div>
     <button class="btn btn-primary" id="sum-continue-btn" onclick="continueGame()">Nästa månad →</button>
@@ -259,7 +257,7 @@
 <div id="overlay-job-switch" class="overlay" style="display:none">
   <div class="overlay-box">
     <h2>🔄 Byt jobb</h2>
-    <p class="card-sub" style="margin-bottom:1rem">Du förlorar ej intjänad lön denna månad om du byter nu!</p>
+    <p class="card-sub" style="margin-bottom:1rem">Du förlorar intjänad lön för denna månad om du byter nu!</p>
     <div id="job-switch-list" class="jobs-switch-list"></div>
     <button class="btn btn-outline" onclick="closeOverlay('overlay-job-switch')" style="margin-top:0.5rem">Avbryt</button>
   </div>

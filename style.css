@@ -450,57 +450,110 @@ html, body {
 }
 .topbar-controls { display: flex; gap: 0.4rem; }
 
+/* ── HERO ROW (balance + goal bar) ─────── */
+.hero-row {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem 0;
+  align-items: stretch;
+}
+/* override .card margin inside hero-row */
+.hero-row > .card {
+  margin: 0;
+}
+
 /* ── BALANCE CARD ───────────────────────── */
 .balance-card {
-  margin-top: 0.75rem;
-  text-align: center;
-  padding: 1.25rem 1rem;
+  flex: 1;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0;
 }
-.balance-label { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.25rem; }
+.balance-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.15rem; }
 .balance-amount {
-  font-size: 2.4rem;
+  font-size: 1.8rem;
   font-weight: 900;
   color: var(--gold);
-  transition: transform 0.2s;
   line-height: 1.1;
 }
 .balance-amount.bump { animation: balanceBump 0.3s ease; }
 @keyframes balanceBump {
   0%  { transform: scale(1); }
-  50% { transform: scale(1.12); }
+  50% { transform: scale(1.1); }
   100%{ transform: scale(1); }
 }
 .balance-sub {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--muted);
-  margin-top: 0.3rem;
-  min-height: 1.2em;
+  margin-top: 0.2rem;
+  min-height: 1em;
 }
 
-/* ── GOAL SECTION ───────────────────────── */
-.goal-section { padding: 0.85rem 1rem; }
-.goal-header {
+/* ── GOAL BAR (vertical, right side) ────── */
+.goal-bar-card {
+  flex: 1;
+  padding: 0.75rem 0.75rem;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.4rem;
+  gap: 0.25rem;
+  margin: 0;
+  border-color: rgba(46,204,113,0.25);
+  background: linear-gradient(135deg, #001a08 0%, #002a10 60%, var(--card) 100%);
+}
+.goal-bar-target {
+  font-size: 0.7rem;
   font-weight: 700;
-  font-size: 0.95rem;
+  color: var(--muted);
+  text-align: center;
 }
-.goal-percent {
-  margin-left: auto;
-  font-size: 0.9rem;
-  font-weight: 900;
+.goal-bar-track {
+  flex: 1;
+  width: 32px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 99px;
+  position: relative;
+  overflow: hidden;
+  min-height: 60px;
+}
+.goal-bar-fill {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(0deg, #43e97b, #38f9d7);
+  border-radius: 99px;
+  transition: height 0.5s ease;
+  min-height: 4px;
+}
+.goal-bar-emoji {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.3rem;
+  z-index: 2;
+  transition: bottom 0.5s ease;
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.6));
+}
+.goal-bar-current {
+  font-size: 0.75rem;
+  font-weight: 800;
   color: var(--green);
+  text-align: center;
 }
-.goal-amounts {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
+.goal-bar-pct {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--gold);
 }
-.goal-cur { color: var(--green); font-weight: 700; }
-.goal-tgt { color: var(--muted); }
+.goal-bar-name {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 700;
+  line-height: 1.3;
+}
 
 /* ── JOB CARD (game) ────────────────────── */
 .job-card { padding: 0.85rem 1rem; }
@@ -538,6 +591,68 @@ html, body {
   margin-bottom: 0.3rem;
 }
 .month-time { color: var(--muted); font-size: 0.78rem; }
+
+/* ── CALENDAR ───────────────────────────── */
+.calendar-section {
+  padding: 0.5rem 0.85rem;
+  margin-bottom: 0.6rem;
+}
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.cal-month-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+.cal-time-left {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 700;
+  background: var(--card2);
+  padding: 0.15rem 0.5rem;
+  border-radius: 50px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+}
+.cal-day {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  font-weight: 800;
+  background: rgba(255,255,255,0.05);
+  color: var(--muted);
+  border: 1px solid transparent;
+  transition: background 0.3s, color 0.2s;
+}
+.cal-day.done {
+  background: rgba(46,204,113,0.18);
+  color: var(--green);
+  border-color: rgba(46,204,113,0.25);
+}
+.cal-day.done::after {
+  content: '✓';
+  font-size: 0.55rem;
+}
+.cal-day.today {
+  background: linear-gradient(135deg, #ffd700, #fda085);
+  color: #1a0a00;
+  border-color: var(--gold);
+  animation: calPulse 1s ease infinite;
+  font-size: 0.7rem;
+}
+@keyframes calPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,215,0,0.5); }
+  50%      { box-shadow: 0 0 0 3px rgba(255,215,0,0); }
+}
 
 /* ── OVERVIEW CARD ──────────────────────── */
 .overview-card { padding: 0; overflow: hidden; }
@@ -834,6 +949,21 @@ html, body {
 @keyframes burstFly {
   0%   { transform: translate(0,0) scale(1); opacity: 1; }
   100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+}
+
+/* ── PAUSE PILL ─────────────────────────── */
+.pause-pill {
+  display: inline-block;
+  background: rgba(255,159,67,0.15);
+  border: 1px solid rgba(255,159,67,0.4);
+  color: var(--orange);
+  border-radius: 50px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  text-align: center;
+  width: 100%;
 }
 
 /* ── TOAST ──────────────────────────────── */

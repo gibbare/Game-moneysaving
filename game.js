@@ -6,15 +6,15 @@
 // ─────────────────────────────────────────
 //  CONSTANTS
 // ─────────────────────────────────────────
-const MONTH_DURATION   = 60000;  // 60 real seconds = 1 game month
+const MONTH_DURATION   = 60000;  // 60 active seconds = 1 game month (pauses during events)
 const TOTAL_MONTHS     = 12;
 const TAX_RATE         = 0.30;
 const STARTING_BALANCE = 2000;
-const TICK_MS          = 200;    // UI update interval
+const TICK_MS          = 200;
 
 const FIXED_EXPENSES = {
-  rent:  4000,
-  food:  2500,
+  rent: 4000,
+  // Food is now handled via real-time meal pings
 };
 
 const MONTH_NAMES = [
@@ -22,357 +22,699 @@ const MONTH_NAMES = [
   'Juli','Augusti','September','Oktober','November','December'
 ];
 
+// 30 days × 3 meals = 90 meal pings per month
+const DAYS_PER_MONTH = 30;
+const DAILY_MEALS = [
+  { dayOffset: 0.15, label: 'Frukost', emoji: '🥣', minCost: 18, maxCost: 42 },
+  { dayOffset: 0.50, label: 'Lunch',   emoji: '🥪', minCost: 35, maxCost: 75 },
+  { dayOffset: 0.85, label: 'Middag',  emoji: '🍝', minCost: 50, maxCost: 110 },
+];
+
+function buildMealSchedule() {
+  const schedule = [];
+  for (let day = 0; day < DAYS_PER_MONTH; day++) {
+    const dayStart = day / DAYS_PER_MONTH;
+    DAILY_MEALS.forEach(m => {
+      schedule.push({
+        atPct: dayStart + m.dayOffset / DAYS_PER_MONTH,
+        label: m.label,
+        emoji: m.emoji,
+        minCost: m.minCost,
+        maxCost: m.maxCost,
+        day: day + 1,
+      });
+    });
+  }
+  return schedule;
+}
+const MEAL_SCHEDULE = buildMealSchedule();
+
+// ─────────────────────────────────────────
+//  JOBS (barn-vänliga termer)
+// ─────────────────────────────────────────
 const JOBS = [
   {
     id: 'cashier',
     emoji: '🛒',
-    name: 'Kassörska / Kassör',
+    name: 'Butiksarbetare',
     color: '#4facfe',
     salary: 16000,
-    salaryText: '16 000 kr/mån',
-    periodText: 'Månadslön (i slutet av månaden)',
-    desc: 'Jobbar i mataffären. Stabilt och tryggt — men du måste vänta hela månaden på lönen!',
+    salaryText: '16 000 kr/månad',
+    periodText: 'Du får hela lönen sista dagen i månaden',
+    desc: 'Du jobbar i mataffären och scannar varor i kassan. Lugnt och tryggt — men du måste vänta hela månaden på pengarna!',
     type: 'monthly',
-    badges: ['Stabil lön', 'Ingen interaktion'],
+    badges: ['Trygg lön', 'Vänta till slutet'],
     interactive: false,
   },
   {
     id: 'barista',
     emoji: '☕',
-    name: 'Barista',
+    name: 'Kaféjobbare',
     color: '#f093fb',
     salary: 14000,
-    salaryText: '14 000 kr/mån',
-    periodText: 'Veckolön (var 15:e sekund)',
-    desc: 'Gör kaffe och smörgåsar. Lägre lön men du får betalt varje vecka — bra för kassaflödet!',
+    salaryText: '14 000 kr/månad',
+    periodText: 'Du får lön varje vecka',
+    desc: 'Du lagar kaffe och smörgåsar på ett coolt kafé. Lite lägre lön men du får pengar varje vecka — skönt!',
     type: 'weekly',
-    payInterval: 15000,    // 15 real seconds = 1 game week
-    payAmount: 14000 / 4,  // = 3500 kr/week gross
-    badges: ['Veckolön', 'Bra flöde'],
+    payInterval: 15000,
+    payAmount: 14000 / 4,
+    badges: ['Veckopeng', 'Bra flöde'],
     interactive: false,
   },
   {
     id: 'delivery',
     emoji: '🚴',
-    name: 'Budcyklist',
+    name: 'Matbudscyklist',
     color: '#fa709a',
     salary: 22000,
-    salaryText: 'upp till 22 000 kr/mån',
-    periodText: 'Per leverans — TAP för att acceptera!',
-    desc: 'Cyklar mat till folk. Bra betalt PER LEVERANS men du måste trycka snabbt när en ny leverans dyker upp!',
+    salaryText: 'upp till 22 000 kr/månad',
+    periodText: 'Du får betalt per leverans — tryck snabbt!',
+    desc: 'Du cyklar runt och levererar mat till hungriga människor. Bra betalt — MEN du måste trycka snabbt när en order dyker upp!',
     type: 'delivery',
-    deliveryInterval: [18000, 25000], // random 18-25 seconds
+    deliveryInterval: [18000, 25000],
     deliveryAmount:   [1400, 1700, 2000, 2300, 2600],
     interactionTimeout: 8000,
-    badges: ['Högt tak', 'Interaktivt! 👆'],
+    badges: ['Bäst betalt', 'Tryck snabbt! 👆'],
     interactive: true,
   },
   {
     id: 'freelancer',
     emoji: '💻',
-    name: 'Frilansare',
+    name: 'Datanörd',
     color: '#43e97b',
     salary: 30000,
-    salaryText: 'upp till 30 000 kr/mån',
-    periodText: 'Per projekt — TAP för att lämna in!',
-    desc: 'Jobbar hemifrån med datorn. Bäst betalt av alla men måste lämna in projekt i tid — annars inget betalt!',
+    salaryText: 'upp till 30 000 kr/månad',
+    periodText: 'Du får betalt när du lämnar in ett jobb',
+    desc: 'Du sitter hemma och fixar datorer och appar åt folk. Bäst betalt av alla — men du måste lämna in dina jobb i tid!',
     type: 'freelancer',
-    projectInterval: [28000, 45000], // random 28-45 seconds
+    projectInterval: [28000, 45000],
     projectAmount:   [6000, 8000, 10000, 12000, 15000],
     interactionTimeout: 12000,
-    badges: ['Bäst lön', 'Hög risk! ⚡'],
+    badges: ['Störst lön', 'Hög risk! ⚡'],
     interactive: true,
   },
 ];
 
+// ─────────────────────────────────────────
+//  GOALS
+// ─────────────────────────────────────────
 const GOALS = [
-  { id: 'pc',       emoji: '🖥️', name: 'Gaming-PC',      amount: 15000, color: '#4facfe' },
-  { id: 'phone',    emoji: '📱', name: 'Ny smartphone',   amount: 8000,  color: '#fa709a' },
-  { id: 'vacation', emoji: '✈️', name: 'Semesterresa',    amount: 20000, color: '#f093fb' },
-  { id: 'bike',     emoji: '🚲', name: 'Ny cykel',        amount: 5000,  color: '#43e97b' },
-  { id: 'console',  emoji: '🎮', name: 'Spelkonsol',      amount: 6000,  color: '#ffd700' },
-  { id: 'custom',   emoji: '⭐', name: 'Eget mål',        amount: null,  color: '#ff9f43' },
+  { id: 'pc',       emoji: '🖥️', name: 'Gaming-PC',       amount: 15000, color: '#4facfe' },
+  { id: 'phone',    emoji: '📱', name: 'Ny smartphone',    amount: 8000,  color: '#fa709a' },
+  { id: 'vacation', emoji: '✈️', name: 'Semesterresa',     amount: 20000, color: '#f093fb' },
+  { id: 'bike',     emoji: '🚲', name: 'Ny cykel',         amount: 5000,  color: '#43e97b' },
+  { id: 'console',  emoji: '🎮', name: 'Spelkonsol',       amount: 6000,  color: '#ffd700' },
+  { id: 'custom',   emoji: '⭐', name: 'Eget sparmål',     amount: null,  color: '#ff9f43' },
 ];
 
+// ─────────────────────────────────────────
+//  EVENTS (barn-vänliga + massor av nya!)
+// ─────────────────────────────────────────
 const EVENTS = [
+  // ── KOMPISAR ──
+  {
+    id: 'bio',
+    emoji: '🎬😎',
+    title: 'Bio med kompisar!',
+    desc: 'Dina kompisar ska gå och se den nya superhjältefilmen! Biljett + popcorn = 150 kr. Följer du med?',
+    choices: [
+      { text: '🍿 Ja, jag är med!',             detail: '−150 kr', effect: -150, type: 'negative', msg: 'Vilken bra film! 🎬' },
+      { text: '😔 Nej, jag sparar pengarna',     detail: '±0 kr',   effect: 0,   type: 'neutral',  msg: 'Smart! Du kan se den när den kommer på streaming.' },
+    ],
+  },
+  {
+    id: 'pokemon',
+    emoji: '🃏✨',
+    title: 'Pokémonkort på affären!',
+    desc: 'I affären finns ett nytt paket Pokémonkort för 79 kr. Kompisen hittar alltid rare-kort! Köper du?',
+    choices: [
+      { text: '⚡ Köp ett paket!',               detail: '−79 kr',  effect: -79,  type: 'negative', msg: 'Du fick ett Pikachu! 🎉' },
+      { text: '🤩 Köp TRE paket!',               detail: '−237 kr', effect: -237, type: 'negative', msg: 'Du fick massa kort men... 237 kr är mycket!' },
+      { text: '😤 Nej, jag sparar',              detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Du sparade dina pengar. Klok!' },
+    ],
+  },
+  {
+    id: 'godis',
+    emoji: '🍬🍭',
+    title: 'Lördagsgodis!',
+    desc: 'Det är lördag och alla i klassen köper godis! Lösviktsgodis kostar ungefär 1 kr/gram.',
+    choices: [
+      { text: '🍬 Litet påse (100g)',             detail: '−29 kr',  effect: -29,  type: 'negative', msg: 'Mmm gott! Lagom mängd.' },
+      { text: '🎃 Stor påse (300g)',              detail: '−85 kr',  effect: -85,  type: 'negative', msg: 'Mycket godis... magen är nöjd men plånboken gråter.' },
+      { text: '💪 Nej, inget godis idag',         detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Dina tänder tackar dig! Och din plånbok.' },
+    ],
+  },
+  {
+    id: 'bowling',
+    emoji: '🎳🎉',
+    title: 'Bowling med gänget!',
+    desc: 'Tre kompisar vill gå och bowla på fredag kväll. Det kostar 120 kr per person plus lite mat.',
+    choices: [
+      { text: '🎳 Självklart, strika!',           detail: '−180 kr', effect: -180, type: 'negative', msg: 'STRIKA! Vilken kul kväll!' },
+      { text: '😅 Nej, för dyrt nu',              detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Nästa gång! Du sparar till något viktigt.' },
+    ],
+  },
+  {
+    id: 'glass',
+    emoji: '🍦☀️',
+    title: 'Glass i solen!',
+    desc: 'Det är superjättevarmt ute och glassvagnen är här! En kula kostar 20 kr.',
+    choices: [
+      { text: '🍦 En kula — lagom!',              detail: '−20 kr',  effect: -20,  type: 'negative', msg: 'Mmm, jordgubbsglass! 😋' },
+      { text: '🍨 Tre kulor — max!',              detail: '−55 kr',  effect: -55,  type: 'negative', msg: 'Lite dyrt men VÄRT DET!' },
+      { text: '💪 Ingen glass idag',              detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Du går hem och tar ett glas vatten istället. Hälsosamt!' },
+    ],
+  },
+  {
+    id: 'skatepark',
+    emoji: '🛹😎',
+    title: 'Skatepark med kompisar!',
+    desc: 'Kompisarna åker till skateparken! Det är gratis att åka men du vill ha en ny trick-deck för 400 kr.',
+    choices: [
+      { text: '🛹 Köp ny deck!',                  detail: '−400 kr', effect: -400, type: 'negative', msg: 'Snygg! Men kom ihåg att det var dyrt.' },
+      { text: '😎 Åk med din gamla board',        detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Skateparken är lika rolig utan ny board!' },
+    ],
+  },
+  {
+    id: 'hamburger',
+    emoji: '🍔🤩',
+    title: 'Hamburgare efter skolan!',
+    desc: 'Hela gänget ska till hamburgerrestaurangen efter skolan. En meny kostar 105 kr.',
+    choices: [
+      { text: '🍔 Japp! Dubbelburger!',           detail: '−105 kr', effect: -105, type: 'negative', msg: 'Nomnom! 🍔' },
+      { text: '😌 Jag äter hemma istället',       detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Smart! Hemlagat är billigare.' },
+    ],
+  },
+  {
+    id: 'minecraft_skin',
+    emoji: '⛏️💎',
+    title: 'Nytt Minecraft-skin!',
+    desc: 'Det finns ett coolt nytt skin i Minecraft-butiken för 50 Minecoin = ca 45 kr. Köpa?',
+    choices: [
+      { text: '💎 Köp skinnet!',                  detail: '−45 kr',  effect: -45,  type: 'negative', msg: 'Du ser épik ut nu! 😎' },
+      { text: '🤷 Standardskin är okej',           detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Steve är en klassiker!' },
+    ],
+  },
+  {
+    id: 'roblox',
+    emoji: '🎮💸',
+    title: 'Robux i Roblox!',
+    desc: 'Det finns ett supercoolt paket i ditt favoritspel i Roblox för 400 Robux = ca 50 kr.',
+    choices: [
+      { text: '🚀 Köp Robux!',                    detail: '−50 kr',  effect: -50,  type: 'negative', msg: 'Du ser grym ut i spelet!' },
+      { text: '😎 Gratis-grejer räcker',           detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Spelet är kul utan köp också!' },
+    ],
+  },
+  {
+    id: 'fotboll',
+    emoji: '⚽🏃',
+    title: 'Fotbollsmatch!',
+    desc: 'Ditt lag ska spela en viktig match! Det kostar 80 kr för buss + mat under matchen.',
+    choices: [
+      { text: '⚽ Självklart, vi kör!',            detail: '−80 kr',  effect: -80,  type: 'negative', msg: 'GOOOL! Bästa känslan!' },
+      { text: '📺 Jag tittar hemma på TV',         detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Matchen sändes på TV! Du sparade 80 kr.' },
+    ],
+  },
+  {
+    id: 'leksaksaffar',
+    emoji: '🧸🛍️',
+    title: 'Leksaksaffären!',
+    desc: 'Du går förbi leksaksaffären och ser ett cool LEGO-set i fönstret för 350 kr. Ingå det i din plan?',
+    choices: [
+      { text: '🧱 Köp LEGO-setet!',               detail: '−350 kr', effect: -350, type: 'negative', msg: 'Bygga, bygga, bygga! 🏗️' },
+      { text: '📸 Ta en bild och gå vidare',       detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Du sparar och köper det när du har råd!' },
+    ],
+  },
+  {
+    id: 'nöjesfält',
+    emoji: '🎡🎢',
+    title: 'Nöjesfält på lördag!',
+    desc: 'Familjen ska till nöjesfältet! Det kostar 250 kr extra för extra-åkningar och mat utöver biljetterna.',
+    choices: [
+      { text: '🎢 Ja, ALLA åkningar!',             detail: '−250 kr', effect: -250, type: 'negative', msg: 'Vilken dag! Du är trött men lycklig. 😄' },
+      { text: '😊 Bara det som ingår',             detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Det ingår massor! Du sparade 250 kr.' },
+    ],
+  },
+  // ── OVÄNTADE SAKER ──
   {
     id: 'phone_broken',
     emoji: '📱💥',
-    title: 'Åh nej! Telefonskärmen gick sönder!',
-    desc: 'Du tappade telefonen och hela skärmen sprack. Vad gör du?',
+    title: 'Telefonskärmen gick sönder!',
+    desc: 'Aj! Du tappade telefonen och hela skärmen sprack. Vad gör du?',
     choices: [
-      { text: 'Laga skärmen', detail: '−2 500 kr', effect: -2500, type: 'negative' },
-      { text: 'Köp begagnad telefon', detail: '−1 200 kr', effect: -1200, type: 'negative' },
-      { text: 'Lev med sprucken skärm', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Lite jobbigt men pengarna är kvar!' },
+      { text: '🔧 Laga den på reparationsbutiken',  detail: '−2 500 kr', effect: -2500, type: 'negative' },
+      { text: '📱 Köp en begagnad telefon',          detail: '−1 200 kr', effect: -1200, type: 'negative' },
+      { text: '😬 Lev med den spruckna skärmen',    detail: '±0 kr',     effect: 0,    type: 'neutral',  msg: 'Lite jobbigt att se — men pengarna är kvar!' },
     ],
   },
   {
-    id: 'concert',
-    emoji: '🎵🎤',
-    title: 'Konsert med kompisar!',
-    desc: 'Dina kompisar ska på konsert med ditt favoritband. Biljetten kostar 800 kr.',
+    id: 'hittade_pengar',
+    emoji: '💸🍀',
+    title: 'Du hittade en hundralapp!',
+    desc: 'Du hittade en 100-kronorssedel på marken utanför affären. Ingen verkar äga den!',
     choices: [
-      { text: 'Ja, det är värt det!', detail: '−800 kr', effect: -800, type: 'negative', msg: 'Vilken kväll! 🎉' },
-      { text: 'Sparar pengarna', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Klok! Du kan lyssna hemma.' },
+      { text: '💰 Plocka upp den!', detail: '+100 kr', effect: 100, type: 'positive', msg: 'Lyckodag! 🍀' },
     ],
   },
   {
-    id: 'sneakers',
-    emoji: '👟✨',
-    title: 'Rea på sneakers!',
-    desc: 'Dina favoritsko är 60% rabatt! Normalt 1 500 kr, nu bara 600 kr. Köpa?',
+    id: 'elrakning',
+    emoji: '⚡💸',
+    title: 'En extra räkning kom!',
+    desc: 'Det var kallt den här månaden och du glömde stänga av lamporna. Extra elräkning!',
     choices: [
-      { text: 'Köp dem nu!', detail: '−600 kr', effect: -600, type: 'negative', msg: 'Snygga! Värde för pengarna.' },
-      { text: 'Behöver dem inte', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du sparade 600 kr. Bra val!' },
+      { text: '📄 Betala räkningen', detail: '−800 kr', effect: -800, type: 'negative' },
     ],
   },
   {
-    id: 'bike_repair',
-    emoji: '🚲🔧',
-    title: 'Cykeln är trasig!',
-    desc: 'Kedjan gick av. Du behöver cykeln för att ta dig till jobbet.',
+    id: 'bonus',
+    emoji: '🌟💰',
+    title: 'Du fick bonus av chefen!',
+    desc: 'Chefen tycker att du jobbat superbra den här månaden. Du får en bonus!',
     choices: [
-      { text: 'Laga på cykelverkstad', detail: '−500 kr', effect: -500, type: 'negative' },
-      { text: 'Laga själv (YouTube)', detail: '−100 kr', effect: -100, type: 'neutral', msg: 'Lite krångligt men du klarade det! 💪' },
-      { text: 'Ta buss istället', detail: '−300 kr', effect: -300, type: 'negative', msg: 'Dyrare i längden...' },
+      { text: '🙏 Tack så jättemycket!', detail: '+2 000 kr', effect: 2000, type: 'positive', msg: 'Hårt arbete lönar sig! ⭐' },
+    ],
+  },
+  {
+    id: 'kompis_fodelsdag',
+    emoji: '🎂🎁',
+    title: 'Kompisens födelsedag!',
+    desc: 'Din bästa kompis fyller år! Vad ger du i present?',
+    choices: [
+      { text: '🎁 Fin present från affären',        detail: '−400 kr', effect: -400, type: 'negative', msg: 'Kompisen blir jätteglad! 🥳' },
+      { text: '✉️ Handgjort kort + godis',          detail: '−50 kr',  effect: -50,  type: 'neutral',  msg: 'Personligt och snällt! ❤️' },
+      { text: '😬 Ingenting (lite pinsamt...)',      detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Oj... man glömde...' },
     ],
   },
   {
     id: 'streaming',
     emoji: '📺🍿',
     title: 'Streamingtjänst?',
-    desc: 'En streamingtjänst erbjuder sig för 150 kr/mån. Alla dina kompisar har den.',
+    desc: 'En streamingtjänst erbjuder massa filmer och serier för 150 kr/månad.',
     choices: [
-      { text: 'Prenumerera', detail: '−150 kr/mån framåt', effect: -150, type: 'negative', recurring: true, recurringName: '📺 Streaming', msg: 'Adderat som månadskostnad!' },
-      { text: 'Nej tack', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du kan alltid dela med en kompis gratis!' },
+      { text: '✅ Skaffa den!', detail: '−150 kr/mån', effect: -150, type: 'negative', recurring: true, recurringName: '📺 Streaming', msg: 'Nu kan du se massa grejer! Läggs till som månadskostnad.' },
+      { text: '❌ Nej tack',    detail: '±0 kr',       effect: 0,    type: 'neutral',  msg: 'Du kan alltid låna inloggning av en kompis!' },
     ],
   },
   {
-    id: 'gaming',
+    id: 'spelköp',
     emoji: '🎮🔥',
     title: 'Nytt spel är ute!',
-    desc: 'Alla pratar om det nya spelet som just kom. Det kostar 600 kr.',
+    desc: 'Det är release av det nya spelet som alla pratar om. Det kostar 600 kr.',
     choices: [
-      { text: 'Köp direkt!', detail: '−600 kr', effect: -600, type: 'negative', msg: 'Skul! Värt det?' },
-      { text: 'Vänta på rea', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Klokt! Det brukar bli billigare.' },
+      { text: '🛒 Köp direkt!',                    detail: '−600 kr', effect: -600, type: 'negative', msg: 'Äntligen! Nu spela hela natten!' },
+      { text: '⏳ Vänta tills det är på rea',      detail: '±0 kr',   effect: 0,    type: 'neutral',  msg: 'Smart! Det brukar kosta hälften efter ett par månader.' },
     ],
   },
   {
-    id: 'birthday',
-    emoji: '🎂🎁',
-    title: 'Kompis har födelsedag!',
-    desc: 'Din bästa kompis fyller år! Vad ger du i present?',
-    choices: [
-      { text: 'Fin present', detail: '−400 kr', effect: -400, type: 'negative', msg: 'Kompisen blir jätteglad!' },
-      { text: 'Handgjord kort + godis', detail: '−80 kr', effect: -80, type: 'neutral', msg: 'Personligt och ekonomiskt! ❤️' },
-      { text: 'Ingenting (awkward...)', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Lite pinsamt...' },
-    ],
-  },
-  {
-    id: 'found_money',
-    emoji: '💸🍀',
-    title: 'Du hittade pengar!',
-    desc: 'Du hittar en 200-kronorssedel på marken utanför affären. Ingen verkar äga den!',
-    choices: [
-      { text: 'Plocka upp den!', detail: '+200 kr', effect: 200, type: 'positive', msg: 'Lyckodag! 🍀' },
-    ],
-  },
-  {
-    id: 'electricity',
-    emoji: '⚡💸',
-    title: 'Elräkningen kom!',
-    desc: 'Det var en kall månad och du hade lamporna på för länge. Extra elräkning!',
-    choices: [
-      { text: 'Betala räkningen', detail: '−800 kr', effect: -800, type: 'negative' },
-    ],
-  },
-  {
-    id: 'pizza',
-    emoji: '🍕😋',
-    title: 'Pizzakväll?',
-    desc: 'Kompisar vill beställa pizza och kolla film. Din andel: 250 kr.',
-    choices: [
-      { text: 'Ja! Pizza!', detail: '−250 kr', effect: -250, type: 'negative', msg: 'Myskväll! 🍕' },
-      { text: 'Jag lagar mat hemma', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Sparade 250 kr! Du kan fika imorgon.' },
-    ],
-  },
-  {
-    id: 'dentist',
+    id: 'tandlakare',
     emoji: '🦷😬',
-    title: 'Tandvärk!',
-    desc: 'Du har ont i en tand i flera dagar. Tandläkaren kostar 1 200 kr.',
+    title: 'Ont i en tand!',
+    desc: 'Du har haft ont i en tand i flera dagar. Tandläkaren kostar 1 200 kr.',
     choices: [
-      { text: 'Gå till tandläkaren', detail: '−1 200 kr', effect: -1200, type: 'negative', msg: 'Smart! Bättre att fixa tidigt.' },
-      { text: 'Hoppas det går över', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Riskabelt... men pengarna är kvar.' },
+      { text: '🦷 Gå till tandläkaren', detail: '−1 200 kr', effect: -1200, type: 'negative', msg: 'Smart! Bättre att fixa det tidigt annars kan det bli ännu dyrare.' },
+      { text: '🤞 Hoppas det går över',  detail: '±0 kr',    effect: 0,    type: 'neutral',  msg: 'Riskabelt men pengarna är kvar för nu...' },
     ],
   },
   {
-    id: 'bonus',
-    emoji: '🌟💰',
-    title: 'Du fick bonus!',
-    desc: 'Chefen är jättenöjd med ditt arbete den här månaden! Du får en bonus!',
-    choices: [
-      { text: 'Tack så jättemycket!', detail: '+2 000 kr', effect: 2000, type: 'positive', msg: 'Hårt arbete lönar sig! ⭐' },
-    ],
-  },
-  {
-    id: 'invest',
+    id: 'aktier',
     emoji: '📈🎲',
-    title: 'Aktiechansen!',
-    desc: 'Din kompis tipsar om ett litet företag. "Det kan gå upp 50%!" säger han. Lika chans att det sjunker. Satsa 2 000 kr?',
+    title: 'Kompisen tipsar om aktier!',
+    desc: '"Köp aktier i det här företaget! Det kan gå upp 50%!" Men det kan också sjunka lika mycket...',
     choices: [
-      { text: 'Satsa 2 000 kr!', detail: 'Chans/risk', effect: 'gamble', gambleAmt: 2000, gambleOdds: 0.5, gambleWin: 3800, type: 'negative', msg: '...' },
-      { text: 'För riskigt, sparar', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Tryggt val! Spara är vinna.' },
+      { text: '🎲 Satsa 2 000 kr!', detail: 'Chans eller risk...', effect: 'gamble', gambleAmt: 2000, gambleOdds: 0.5, gambleWin: 3800, type: 'negative', msg: '...' },
+      { text: '🏦 För riskigt, sparar hellre', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Tryggt val! Att spara är som att vinna.' },
+    ],
+  },
+  {
+    id: 'sparkonto',
+    emoji: '🏦💡',
+    title: 'Banken erbjuder sparkonto!',
+    desc: 'Banken kan ge dig ränta (extra pengar!) om du sätter in minst 3 000 kr på ett sparkonto.',
+    choices: [
+      { text: '💰 Öppna sparkonto (3 000 kr)', detail: '→ Pengarna växer!', effect: 'savings_account', savingsAmt: 3000, type: 'neutral', msg: 'Bra! Nu växer dina pengar av sig själva! 📈' },
+      { text: '🤷 Ingen tack', detail: '±0 kr', effect: 0, type: 'neutral' },
+    ],
+  },
+  {
+    id: 'kompislaan',
+    emoji: '🤝💸',
+    title: 'Kompisen behöver låna pengar',
+    desc: 'Din kompis har slut på pengar och ber att få låna 500 kr. Han lovar betala tillbaka nästa månad.',
+    choices: [
+      { text: '👍 Låna ut 500 kr', detail: '−500 kr (kanske?)', effect: -500, type: 'negative', msg: 'Schysst! Hoppas du får tillbaka dem...' },
+      { text: '😕 Kan inte just nu', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Dina pengar, ditt val.' },
+    ],
+  },
+  {
+    id: 'kläder',
+    emoji: '👕🏷️',
+    title: 'Klädrea!',
+    desc: '50% rea på ett populärt klädmärke! Kläder som kostar 1 200 kr nu för 600 kr.',
+    choices: [
+      { text: '🛍️ Handla för 600 kr', detail: '−600 kr', effect: -600, type: 'negative', msg: 'Snyggt OCH billigt!' },
+      { text: '😌 Jag har kläder redan', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du är nöjd med det du har. Klokt!' },
     ],
   },
   {
     id: 'gym',
     emoji: '💪🏋️',
     title: 'Gymkort på rea!',
-    desc: 'Gymmet erbjuder årskortet för 2 000 kr (normalt 3 600). Bra deal!',
+    desc: 'Gymmet nära dig säljer ett gymkort billigare nu! 2 000 kr för hela året.',
     choices: [
-      { text: 'Köp gymkortet', detail: '−2 000 kr', effect: -2000, type: 'negative', msg: 'Bra investering i din hälsa!' },
-      { text: 'Springer utomhus gratis', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Smart! Naturen är gratis.' },
+      { text: '💪 Köp gymkort', detail: '−2 000 kr', effect: -2000, type: 'negative', msg: 'Hälsosam investering! 💪' },
+      { text: '🏃 Springer utomhus gratis', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Naturen är gratis och lika bra!' },
     ],
   },
   {
-    id: 'second_hand',
-    emoji: '👕♻️',
-    title: 'Second hand fynd!',
-    desc: 'Du hittar ett knappt använt märkesjacka på Blocket för 300 kr (värd 2 000). Köpa?',
+    id: 'secondhand',
+    emoji: '♻️👕',
+    title: 'Secondhand fynd!',
+    desc: 'På Blocket säljer någon en knappt använd jakka för 300 kr (kostar 2 000 kr ny). Köpa?',
     choices: [
-      { text: 'Köp jackan!', detail: '−300 kr', effect: -300, type: 'negative', msg: 'Bra deal! Miljösmart dessutom.' },
-      { text: 'Nej tack', detail: '±0 kr', effect: 0, type: 'neutral' },
+      { text: '✅ Köp jackan!', detail: '−300 kr', effect: -300, type: 'negative', msg: 'Bra deal OCH miljösmart!' },
+      { text: '❌ Nej tack', detail: '±0 kr', effect: 0, type: 'neutral' },
     ],
   },
   {
-    id: 'savings_tip',
-    emoji: '🏦💡',
-    title: 'Banken erbjuder sparkonto!',
-    desc: 'Du kan öppna ett sparkonto med 2% ränta. Sätt in minst 3 000 kr för att börja tjäna ränta!',
+    id: 'pizza',
+    emoji: '🍕😋',
+    title: 'Pizza med kompisar!',
+    desc: 'Kompisar vill beställa pizza och kolla film hemma. Din del: 250 kr.',
     choices: [
-      { text: 'Sätt in 3 000 kr', detail: '→ sparkonto + ränta!', effect: 'savings_account', savingsAmt: 3000, type: 'neutral', msg: 'Bra! Pengarna växer nu! 📈' },
-      { text: 'Ingen tack', detail: '±0 kr', effect: 0, type: 'neutral' },
+      { text: '🍕 Ja! Pizza!', detail: '−250 kr', effect: -250, type: 'negative', msg: 'Myskväll! 🍕' },
+      { text: '🏠 Jag lagar mat hemma', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Sparade 250 kr! Du kan fika imorgon istället.' },
     ],
   },
   {
-    id: 'friend_loan',
-    emoji: '🤝💸',
-    title: 'Kompisen behöver låna pengar',
-    desc: 'Din kompis har kört slut på pengar och ber dig låna 500 kr. Han lovar betala tillbaka nästa månad.',
+    id: 'trampolinkpark',
+    emoji: '🦘🎉',
+    title: 'Trampolinkpark!',
+    desc: 'Det finns en trampolinkpark i stan! En timme kostar 160 kr. Kompisarna är redan på väg dit!',
     choices: [
-      { text: 'Låna ut 500 kr', detail: '−500 kr (tillfälligt?)', effect: -500, type: 'negative', msg: 'Schysst av dig! Hoppas du får tillbaka dem.' },
-      { text: 'Kan inte just nu', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Dina pengar, din rätt.' },
+      { text: '🦘 Hoppa med!', detail: '−160 kr', effect: -160, type: 'negative', msg: 'BOING BOING! Jättekul!' },
+      { text: '😅 Hoppar över', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du sparar 160 kr. Klokt!' },
     ],
   },
   {
-    id: 'clothes_sale',
-    emoji: '🛍️🏷️',
-    title: 'Klädrea!',
-    desc: '70% rea på ett stort klädmärke. Du hittar kläder för normalt 2 000 kr nu för bara 600 kr.',
+    id: 'slime',
+    emoji: '🟢✨',
+    title: 'Slime-kit på affären!',
+    desc: 'Du ser ett slime-kit för 95 kr. Det verkar riktigt roligt att göra hemma!',
     choices: [
-      { text: 'Handla för 600 kr', detail: '−600 kr', effect: -600, type: 'negative', msg: 'Snyggt OCH prisvärt!' },
-      { text: 'Behöver inga nya kläder', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du är nöjd med det du har. Klokt!' },
+      { text: '🟢 Köp det!', detail: '−95 kr', effect: -95, type: 'negative', msg: 'Grönt, gluggigt och kul! 🎨' },
+      { text: '🤷 Nej tack', detail: '±0 kr', effect: 0, type: 'neutral' },
+    ],
+  },
+  {
+    id: 'konsert',
+    emoji: '🎵🎤',
+    title: 'Konsert!',
+    desc: 'Ditt favoritband spelar i stan! En biljett kostar 800 kr.',
+    choices: [
+      { text: '🎤 Ja, det är värt det!', detail: '−800 kr', effect: -800, type: 'negative', msg: 'Vilken konsert! 🎉' },
+      { text: '🎧 Lyssnar hemma gratis', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du lyssnar på dem på Spotify istället.' },
+    ],
+  },
+  {
+    id: 'simhallen',
+    emoji: '🏊💦',
+    title: 'Simhallen!',
+    desc: 'Kompisarna ska simma! Inträdet kostar 60 kr.',
+    choices: [
+      { text: '💦 Hoppa i!', detail: '−60 kr', effect: -60, type: 'negative', msg: 'SPLASH! Superkul 🏊' },
+      { text: '😌 En annan gång', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Nästa vecka kanske!' },
+    ],
+  },
+  {
+    id: 'snacks_butiken',
+    emoji: '🧃🍫',
+    title: 'Snacks i affären!',
+    desc: 'Du är sugen på snacks — chips, choklad och en läsk. Totalt ca 55 kr.',
+    choices: [
+      { text: '🍫 Köp alltihop!', detail: '−55 kr', effect: -55, type: 'negative', msg: 'Nom nom! Gott men dyrt för snacks.' },
+      { text: '🍫 Bara chokladen', detail: '−20 kr', effect: -20, type: 'neutral', msg: 'Lagom! Lite gott kostar lite.' },
+      { text: '💪 Inget idag', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Starkt! Du klarar dig utan.' },
+    ],
+  },
+  {
+    id: 'skolresa',
+    emoji: '🚌🏛️',
+    title: 'Skolresa!',
+    desc: 'Klassen ska på utflykt till ett museum. Det kostar 120 kr för buss och inträde.',
+    choices: [
+      { text: '🏛️ Häng med!', detail: '−120 kr', effect: -120, type: 'negative', msg: 'Kul dag med klassen!' },
+      { text: '😔 Jag stannar hemma', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du missar utflykten men sparar 120 kr.' },
+    ],
+  },
+  {
+    id: 'app_kop',
+    emoji: '📲💳',
+    title: 'Ny app med köp!',
+    desc: 'En rolig app du laddat ned har ett specialerbjudande — ta bort reklam för 29 kr.',
+    choices: [
+      { text: '✅ Köp, slipp reklam!', detail: '−29 kr', effect: -29, type: 'negative', msg: 'Skönt utan reklam!' },
+      { text: '😤 Reklam är okej', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Gratis är gratis!' },
+    ],
+  },
+  {
+    id: 'tips_kompis',
+    emoji: '💡🤑',
+    title: 'Kompisen gav dig ett tips!',
+    desc: 'Din kompis berättar att grannens hund behöver rastvakt i helgen. De betalar 200 kr!',
+    choices: [
+      { text: '🐕 Självklart, jag gör det!', detail: '+200 kr', effect: 200, type: 'positive', msg: 'Ruff! 🐕 Du tjänade 200 kr på att rasta hunden.' },
+      { text: '😴 Orkar inte', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du vilar dig. Pengar är pengar...' },
+    ],
+  },
+  {
+    id: 'byta_prylar',
+    emoji: '🔄🎮',
+    title: 'Byta prylar med kompisen!',
+    desc: 'Kompisen vill byta sitt gamla spel mot ditt. Hans spel är värt 150 kr mer. Gör du affären?',
+    choices: [
+      { text: '🤝 Ja, bra deal!', detail: '+150 kr', effect: 150, type: 'positive', msg: 'Smart byteshandel! +150 kr i värde.' },
+      { text: '🙅 Nej, jag gillar mitt', detail: '±0 kr', effect: 0, type: 'neutral' },
+    ],
+  },
+  {
+    id: 'cykel_vadar',
+    emoji: '🌧️🚲',
+    title: 'Det öser ner!',
+    desc: 'Det regnar jättemycket. Du kan ta buss för 25 kr eller cykla och bli blöt.',
+    choices: [
+      { text: '🚌 Ta bussen', detail: '−25 kr', effect: -25, type: 'negative', msg: 'Torr och nöjd! Men 25 kr borta.' },
+      { text: '🚲 Cykla & bli blöt', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du är blöt men har pengarna kvar!' },
+    ],
+  },
+  {
+    id: 'youtube_premium',
+    emoji: '▶️✨',
+    title: 'YouTube utan reklam!',
+    desc: 'Du kan skaffa YouTube Premium för 79 kr/månad och slippa alla reklamer.',
+    choices: [
+      { text: '▶️ Skaffa Premium!', detail: '−79 kr/mån', effect: -79, type: 'negative', recurring: true, recurringName: '▶️ YouTube Premium', msg: 'Inga fler reklamer! Läggs till som månadskostnad.' },
+      { text: '😤 Reklam går bra', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Spola förbi reklamen istället!' },
+    ],
+  },
+  {
+    id: 'fika_kompis',
+    emoji: '🥐☕',
+    title: 'Fika med kompisen!',
+    desc: 'Kompisen vill ta en fika på kaféet efter skolan. En bulle + juice kostar 55 kr.',
+    choices: [
+      { text: '🥐 Fika!', detail: '−55 kr', effect: -55, type: 'negative', msg: 'Gott och mysigt! 🥐' },
+      { text: '💧 Bara vatten, tack', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du dricker vatten gratis och sparar 55 kr!' },
+    ],
+  },
+  {
+    id: 'hittat_coupon',
+    emoji: '🎟️🤩',
+    title: 'Du hittade en kupong!',
+    desc: 'Du hittade en kupong i en gammal jacka — 200 kr att använda i din favoritaffär!',
+    choices: [
+      { text: '🛍️ Använd kupongen!', detail: '+200 kr', effect: 200, type: 'positive', msg: 'Jackpot! Fri shopping för 200 kr 🎉' },
+    ],
+  },
+  {
+    id: 'tappade_pengar',
+    emoji: '😱💸',
+    title: 'Du tappade pengar!',
+    desc: 'Du märker att 150 kr försvann ur fickan. De är borta för alltid...',
+    choices: [
+      { text: '😢 Okay, pech...', detail: '−150 kr', effect: -150, type: 'negative', msg: 'Läxa lärd — ha alltid plånboken i innerfickan!' },
+    ],
+  },
+  {
+    id: 'klippa_grasmat',
+    emoji: '🌿💰',
+    title: 'Grannen vill ha hjälp!',
+    desc: 'Grannen frågar om du kan klippa gräsmattan för 150 kr. Det tar en timme.',
+    choices: [
+      { text: '🌿 Visst, inga problem!', detail: '+150 kr', effect: 150, type: 'positive', msg: 'Fint jobbat! 150 kr på fickan.' },
+      { text: '😴 Orkar inte idag', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du vilar. Nästa gång kanske!' },
+    ],
+  },
+  {
+    id: 'spotify',
+    emoji: '🎵💚',
+    title: 'Spotify Student!',
+    desc: 'Spotify har ett studentpris på 55 kr/mån (halva priset). Skaffa?',
+    choices: [
+      { text: '🎵 Ja, musiken måste till!', detail: '−55 kr/mån', effect: -55, type: 'negative', recurring: true, recurringName: '🎵 Spotify', msg: 'All musik i världen! Läggs till som månadskostnad.' },
+      { text: '😎 Jag lyssnar på gratis-Spotify', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Reklam men gratis!' },
+    ],
+  },
+  {
+    id: 'fodelsedag_sjalv',
+    emoji: '🎂🎉',
+    title: 'Det är din födelsedag!',
+    desc: 'Grattis! Du fick pengar i present av farmor och farfar!',
+    choices: [
+      { text: '🎂 Tack!! 🎉', detail: '+500 kr', effect: 500, type: 'positive', msg: 'Snälla farmor och farfar! +500 kr 🥳' },
+    ],
+  },
+  {
+    id: 'sald_grej',
+    emoji: '📦💰',
+    title: 'Du sålde en gammal grej!',
+    desc: 'Du lade ut en gammal sak på Blocket och fick betalt!',
+    choices: [
+      { text: '💰 Bra!', detail: '+300 kr', effect: 300, type: 'positive', msg: 'Gammal grej → nya pengar! Smart.' },
+    ],
+  },
+  {
+    id: 'kino_hemma',
+    emoji: '📽️🛋️',
+    title: 'Hemmabiokväll!',
+    desc: 'Du vill göra en riktig hemmabioupplevelse. Popcorn + läsk kostar 80 kr.',
+    choices: [
+      { text: '🍿 Köp godsakerna!', detail: '−80 kr', effect: -80, type: 'negative', msg: 'Perfekt filmkväll! 🎬' },
+      { text: '😋 Bara film, inget godis', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Filmen är lika bra ändå!' },
+    ],
+  },
+  {
+    id: 'pokemon_rare',
+    emoji: '⭐🃏',
+    title: 'Rare Pokémonkort till salu!',
+    desc: 'En klasskompis säljer ett sällsynt Pokémonkort för 250 kr. Det kan vara värt mer!',
+    choices: [
+      { text: '⭐ Köp det!', detail: '−250 kr', effect: -250, type: 'negative', msg: 'Kanske värt massor i framtiden... eller inte!' },
+      { text: '🤷 Nej tack', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Spara pengarna till något säkrare!' },
+    ],
+  },
+  {
+    id: 'trasig_cykel2',
+    emoji: '🚲😩',
+    title: 'Punktering!',
+    desc: 'Cykeldäcket gick sönder. Ett nytt däck kostar 120 kr. Annars får du gå.',
+    choices: [
+      { text: '🔧 Laga däcket', detail: '−120 kr', effect: -120, type: 'negative', msg: 'Bra! Nu rullar det igen.' },
+      { text: '🚶 Jag går istället', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Lite längre väg men pengarna är kvar!' },
+    ],
+  },
+  {
+    id: 'vann_tavling',
+    emoji: '🏆🎊',
+    title: 'Du vann en tävling!',
+    desc: 'Du deltog i en skoltävling och vann! Priset är ett presentkort på 400 kr.',
+    choices: [
+      { text: '🏆 Yeeees!', detail: '+400 kr', effect: 400, type: 'positive', msg: 'Du är grym! 🏆 +400 kr' },
+    ],
+  },
+  {
+    id: 'dyr_lunch',
+    emoji: '🍱💸',
+    title: 'Dyrt skolcafé!',
+    desc: 'Idag är skolmaten slut. Du måste köpa lunch på cafét bredvid för 95 kr.',
+    choices: [
+      { text: '🍱 Köp lunch', detail: '−95 kr', effect: -95, type: 'negative', msg: 'Gott men dyrt!' },
+      { text: '😤 Jag skippar lunch idag', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Du är hungrig men rik... ish.' },
+    ],
+  },
+  {
+    id: 'pengar_tillbaka',
+    emoji: '💸🔄',
+    title: 'Kompisen betalade tillbaka!',
+    desc: 'Minns du att du lånade ut pengar? Nu betalar kompisen tillbaka 500 kr!',
+    choices: [
+      { text: '😊 Äntligen!', detail: '+500 kr', effect: 500, type: 'positive', msg: 'Schysst kompis! +500 kr tillbaka.' },
     ],
   },
 ];
 
-// Tips shown in month summary
+// Tips efter varje månad
 const MONTH_TIPS = [
-  '💡 Visste du? Om du sparar 1 000 kr/mån i 40 år med 7% ränta blir det MILJONER!',
-  '💡 "Pay yourself first" — spara en del av lönen DIREKT när den kommer in!',
-  '💡 Att laga mat hemma sparar oftast 60-70% jämfört med att äta ute varje dag.',
-  '💡 Räkna alltid netto (efter skatt) — det är det du faktiskt har kvar!',
-  '💡 En nödfond på 3 månaders utgifter skyddar dig mot oväntade kostnader.',
-  '💡 Compound interest = ränta på ränta. Ju tidigare du börjar spara, desto mer får du!',
-  '💡 Skillnaden mellan "vill ha" och "behöver" är nyckeln till bra ekonomi.',
-  '💡 Fasta utgifter (hyra, mat) kommer ALLTID. Planera för dem!',
-  '💡 Att köpa second hand sparar pengar OCH är bra för miljön!',
+  '💡 Om du sparar 1 000 kr/månad i 40 år med ränta kan det bli MILJONER!',
+  '💡 "Betala dig själv först" — spara lite direkt när du får pengar!',
+  '💡 Att laga mat hemma är mycket billigare än att alltid köpa färdig mat.',
+  '💡 Tänk alltid: "Behöver jag detta, eller vill jag bara ha det?"',
+  '💡 En liten buffert (extra pengar) skyddar dig om något oväntat händer.',
+  '💡 Ränta på ränta — om pengar ger ränta, och räntan också ger ränta, växer det fort!',
+  '💡 Skillnaden mellan att vilja ha och att behöva är nyckeln till bra ekonomi.',
+  '💡 Hyran och maten kommer alltid — planera för dem!',
+  '💡 Att köpa secondhand sparar pengar och är bra för miljön!',
   '💡 Spara INNAN du spenderar — inte tvärtom!',
 ];
 
-// Game-over wisdom based on performance
 const WISDOM = [
-  { minSavings: 0.6, text: '🌟 Otroligt! Du sparade mer än 60% av det du tjänade. Du är en sparmästare! Med den disciplinen kan du nå vilka ekonomiska mål som helst i livet.' },
-  { minSavings: 0.4, text: '👍 Bra jobbat! Du sparade en stor del av din inkomst. Att fortsätta med den vanan kommer göra dig ekonomiskt trygg.' },
-  { minSavings: 0.2, text: '📚 Du är på rätt väg! Nästa steg är att spara ännu mer. Försök att spara 20-30% av lönen varje månad.' },
-  { minSavings: 0.05, text: '🤔 Du spenderade det mesta du tjänade. Tänk på: varje krona du sparar nu är mer värd än en krona du sparar om 10 år — tack vare ränta!' },
-  { minSavings: -Infinity, text: '😬 Det gick tufft ekonomiskt! Men du lärde dig vad som kostar pengar. Nu vet du bättre — försök igen och sikta på att spara lite varje månad!' },
+  { minSavings: 0.6, text: '🌟 Wow! Du sparade mer än hälften av allt du tjänade. Du är en riktig sparmästare! Med den disciplinen kan du köpa nästan vad som helst i framtiden.' },
+  { minSavings: 0.4, text: '👍 Bra jobbat! Du sparade en stor del av dina pengar. Fortsätt så och du kommer ha massor av pengar när du behöver dem.' },
+  { minSavings: 0.2, text: '📚 Du är på rätt väg! Försök spara ännu lite mer varje månad. Även 100 kr extra gör stor skillnad över tid!' },
+  { minSavings: 0.05, text: '🤔 Du spenderade det mesta du tjänade. Kom ihåg: varje krona du sparar NU är värd mer än en krona du sparar om 10 år!' },
+  { minSavings: -Infinity, text: '😬 Tufft år — men du lärde dig! Nu vet du vad som kostar pengar. Försök igen och sikta på att ha lite pengar kvar varje månad.' },
 ];
 
 // ─────────────────────────────────────────
 //  GAME STATE
 // ─────────────────────────────────────────
 let state = {
-  // Profile
   profiles: {},
   activeProfileId: null,
-
-  // Game progress
   balance: STARTING_BALANCE,
-  month: 0,            // 0..11
+  month: 0,
   gameRunning: false,
   paused: false,
-
-  // Current month tracking
-  mIncome: 0,          // gross income this month
-  mTax: 0,
-  mNetIncome: 0,       // net income this month
-  mFixed: 0,           // rent + food
-  mEvents: 0,          // event expenses this month
-  mRecurring: 0,       // recurring costs this month
-
+  // Monthly tracking
+  mIncome: 0, mTax: 0, mNetIncome: 0,
+  mFixed: 0, mEvents: 0, mRecurring: 0, mFood: 0,
   // All-time
-  totalGross: 0,
-  totalTax: 0,
-  totalFixed: 0,
-  totalEventCosts: 0,
-  savingsAccountBalance: 0,
-  savingsAccountInterest: 0,
-
+  totalGross: 0, totalTax: 0, totalFixed: 0, totalEventCosts: 0, totalFood: 0,
+  savingsAccountBalance: 0, savingsAccountInterest: 0,
   // Job
-  job: null,
-  payTimer: null,
-  payProgress: 0,
-  payElapsed: 0,
-  payAmount: 0,        // gross amount for next pay
-
-  // Interaction (delivery/freelance)
-  activeInteraction: null,
-  interactionTimer: null,
-  interactionElapsed: 0,
+  job: null, payElapsed: 0,
+  activeInteraction: null, interactionTimer: null,
   interactionScheduled: null,
-
-  // Month timer
-  monthElapsed: 0,
-  monthTimer: null,
-
+  // Month timer (proper pause)
+  monthElapsed: 0, monthLastTick: 0, monthTimer: null,
   // Events
-  eventTimer: null,
-  eventQueue: [],
-  shownEventIds: [],
-  recurringCosts: [],  // [{name, amount}]
-
+  eventTimer: null, eventQueue: [], shownEventIds: [],
+  recurringCosts: [],
+  currentEvent: null,
+  // Food pings
+  foodPingsFired: [],
   // Goal
-  goal: null,
-
+  goal: null, goalReached: false,
+  // Selection
+  selectedAvatar: '😎', selectedJob: null,
+  // Sound
+  soundEnabled: true, musicEnabled: true,
+  audioCtx: null, musicTimeout: null,
   // UI
-  soundEnabled: true,
-  audioCtx: null,
   overviewOpen: false,
-
-  // Temporary: selected avatar/job for new game
-  selectedAvatar: '😎',
-  selectedJob: null,
 };
 
 // ─────────────────────────────────────────
-//  SOUND SYSTEM
+//  SOUND & MUSIC
 // ─────────────────────────────────────────
 function initAudio() {
   if (state.audioCtx) return;
   try {
-    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    state.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+    // Master gain nodes — set to 0 to instantly mute without stopping oscillators
+    state.sfxGain   = state.audioCtx.createGain();
+    state.musicGain = state.audioCtx.createGain();
+    state.sfxGain.connect(state.audioCtx.destination);
+    state.musicGain.connect(state.audioCtx.destination);
   } catch(e) {}
 }
 
@@ -382,35 +724,96 @@ function playTone(freq, dur, type = 'sine', vol = 0.25, delay = 0) {
     const ctx = state.audioCtx;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = type;
-    osc.frequency.value = freq;
+    osc.connect(gain); gain.connect(state.sfxGain);
+    osc.type = type; osc.frequency.value = freq;
     const t = ctx.currentTime + delay;
     gain.gain.setValueAtTime(vol, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    osc.start(t);
-    osc.stop(t + dur + 0.05);
+    osc.start(t); osc.stop(t + dur + 0.05);
   } catch(e) {}
 }
 
 const SFX = {
-  click:  () => playTone(660, 0.06, 'sine', 0.15),
-  coin:   () => { playTone(880, 0.08); playTone(1100, 0.1, 'sine', 0.2, 0.08); },
-  salary: () => { [523,659,784,1047].forEach((f,i) => playTone(f, 0.18, 'sine', 0.22, i*0.1)); },
-  spend:  () => { playTone(330, 0.18, 'sawtooth', 0.18); playTone(220, 0.25, 'sawtooth', 0.12, 0.15); },
-  event:  () => { playTone(660, 0.08); playTone(880, 0.15, 'sine', 0.2, 0.12); },
-  alarm:  () => { [0,250,500].forEach(d => playTone(880, 0.12, 'square', 0.3, d/1000)); },
-  month:  () => { [440,550,660].forEach((f,i) => playTone(f, 0.15, 'sine', 0.2, i*0.08)); },
-  win:    () => { [523,659,784,1047,1319].forEach((f,i) => playTone(f, 0.22, 'sine', 0.22, i*0.11)); },
-  lose:   () => playTone(200, 0.7, 'sawtooth', 0.18),
-  goal:   () => { [523,659,784,1047,1319,1568].forEach((f,i) => playTone(f, 0.25, 'sine', 0.25, i*0.09)); },
+  click:  () => playTone(660, 0.06, 'sine', 0.12),
+  coin:   () => { playTone(880, 0.08); playTone(1100, 0.1, 'sine', 0.18, 0.08); },
+  salary: () => { [523,659,784,1047].forEach((f,i) => playTone(f, 0.18, 'sine', 0.2, i*0.1)); },
+  spend:  () => { playTone(330, 0.18, 'sawtooth', 0.15); playTone(220, 0.25, 'sawtooth', 0.1, 0.15); },
+  event:  () => { playTone(660, 0.08); playTone(880, 0.15, 'sine', 0.18, 0.12); },
+  alarm:  () => { [0,250,500].forEach(d => playTone(880, 0.12, 'square', 0.25, d/1000)); },
+  month:  () => { [440,550,660].forEach((f,i) => playTone(f, 0.15, 'sine', 0.18, i*0.08)); },
+  win:    () => { [523,659,784,1047,1319].forEach((f,i) => playTone(f, 0.22, 'sine', 0.2, i*0.11)); },
+  goal:   () => { [523,659,784,1047,1319,1568].forEach((f,i) => playTone(f, 0.25, 'sine', 0.22, i*0.09)); },
+  food:   () => { playTone(440, 0.06); playTone(550, 0.1, 'sine', 0.12, 0.07); },
 };
+
+// Background music — cheerful looping melody
+const MUSIC_NOTES = [
+  [523, 0.2], [659, 0.2], [784, 0.2], [659, 0.2],
+  [523, 0.2], [392, 0.2], [440, 0.4],
+  [523, 0.2], [659, 0.2], [784, 0.2], [1047, 0.2],
+  [880, 0.2], [784, 0.4], [659, 0.4],
+  [523, 0.2], [440, 0.2], [392, 0.2], [440, 0.2],
+  [523, 0.4], [392, 0.2], [330, 0.6],
+];
+
+function playMusicBar() {
+  if (!state.audioCtx || !state.musicGain) return;
+  const ctx = state.audioCtx;
+  let t = ctx.currentTime + 0.05;
+  let totalDur = 0;
+
+  MUSIC_NOTES.forEach(([freq, dur]) => {
+    try {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      // Route through musicGain — muting musicGain silences instantly
+      osc.connect(gain); gain.connect(state.musicGain);
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur - 0.03);
+      osc.start(t); osc.stop(t + dur);
+    } catch(e) {}
+    t += dur;
+    totalDur += dur;
+  });
+
+  state.musicTimeout = setTimeout(playMusicBar, totalDur * 1000 - 100);
+}
+
+function startMusic() {
+  clearTimeout(state.musicTimeout);
+  if (!state.audioCtx || !state.musicGain) return;
+  state.musicGain.gain.value = (state.musicEnabled && state.soundEnabled) ? 1 : 0;
+  if (state.musicEnabled && state.soundEnabled) playMusicBar();
+}
+
+function stopMusic() {
+  clearTimeout(state.musicTimeout);
+  if (state.musicGain) state.musicGain.gain.value = 0;
+}
+
+function toggleSound() {
+  state.soundEnabled = !state.soundEnabled;
+  document.getElementById('sound-btn').textContent = state.soundEnabled ? '🔊' : '🔇';
+  if (state.sfxGain)   state.sfxGain.gain.value   = state.soundEnabled ? 1 : 0;
+  if (state.musicGain) state.musicGain.gain.value  = (state.soundEnabled && state.musicEnabled) ? 1 : 0;
+  if (state.soundEnabled && state.musicEnabled) startMusic();
+}
+
+function toggleMusic() {
+  state.musicEnabled = !state.musicEnabled;
+  const btn = document.getElementById('music-btn');
+  btn.textContent = state.musicEnabled ? '🎵' : '🔕';
+  btn.style.opacity = state.musicEnabled ? '1' : '0.5';
+  if (state.musicGain) state.musicGain.gain.value = (state.musicEnabled && state.soundEnabled) ? 1 : 0;
+  if (state.musicEnabled && state.soundEnabled) startMusic();
+}
 
 // ─────────────────────────────────────────
 //  STORAGE
 // ─────────────────────────────────────────
-const STORAGE_KEY = 'livet_som_spel_v1';
+const STORAGE_KEY = 'livet_som_spel_v2';
 
 function saveProfiles() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.profiles)); } catch(e) {}
@@ -428,38 +831,29 @@ function saveCurrentGame() {
   if (!pid || !state.profiles[pid]) return;
   state.profiles[pid].lastSave = Date.now();
   state.profiles[pid].gameState = {
-    balance: state.balance,
-    month: state.month,
-    mIncome: state.mIncome,
-    mTax: state.mTax,
-    mNetIncome: state.mNetIncome,
-    mFixed: state.mFixed,
-    mEvents: state.mEvents,
-    mRecurring: state.mRecurring,
-    totalGross: state.totalGross,
-    totalTax: state.totalTax,
-    totalFixed: state.totalFixed,
-    totalEventCosts: state.totalEventCosts,
+    balance: state.balance, month: state.month,
+    mIncome: state.mIncome, mTax: state.mTax, mNetIncome: state.mNetIncome,
+    mFixed: state.mFixed, mEvents: state.mEvents, mRecurring: state.mRecurring, mFood: state.mFood,
+    totalGross: state.totalGross, totalTax: state.totalTax, totalFixed: state.totalFixed,
+    totalEventCosts: state.totalEventCosts, totalFood: state.totalFood,
     savingsAccountBalance: state.savingsAccountBalance,
     savingsAccountInterest: state.savingsAccountInterest,
     jobId: state.job ? state.job.id : null,
     recurringCosts: state.recurringCosts,
     shownEventIds: state.shownEventIds,
-    goal: state.goal,
-    gameRunning: state.gameRunning,
+    goal: state.goal, gameRunning: state.gameRunning,
   };
   saveProfiles();
 }
 
 // ─────────────────────────────────────────
-//  SCREEN MANAGEMENT
+//  SCREENS
 // ─────────────────────────────────────────
 function showScreen(id) {
   SFX.click();
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById('screen-' + id);
   if (el) el.classList.add('active');
-
   if (id === 'profiles') renderProfiles();
   if (id === 'job')      renderJobs();
   if (id === 'goal')     renderGoals();
@@ -475,21 +869,19 @@ function showOverlay(id) {
 }
 
 // ─────────────────────────────────────────
-//  PROFILE MANAGEMENT
+//  PROFILES
 // ─────────────────────────────────────────
 function renderProfiles() {
   const list = document.getElementById('profiles-list');
-  const ids = Object.keys(state.profiles);
+  const ids  = Object.keys(state.profiles);
   if (ids.length === 0) {
     list.innerHTML = '<p style="color:var(--muted);font-size:0.9rem;text-align:center;padding:0.5rem 0">Inga sparade spelare ännu!</p>';
     return;
   }
   list.innerHTML = ids.map(pid => {
-    const p = state.profiles[pid];
+    const p  = state.profiles[pid];
     const gs = p.gameState;
-    const meta = gs
-      ? `Månad ${gs.month + 1}/12 · ${fmt(gs.balance)}`
-      : 'Nytt spel';
+    const meta = gs ? `Månad ${gs.month + 1}/12 · ${fmt(gs.balance)}` : 'Nytt spel';
     return `<div class="profile-card" onclick="loadProfile('${pid}')">
       <div class="profile-avatar">${p.avatar}</div>
       <div class="profile-info">
@@ -511,13 +903,7 @@ function createProfile() {
   const name = document.getElementById('player-name-input').value.trim();
   if (!name) { showToast('Skriv in ditt namn!', 'info'); return; }
   const pid = 'p_' + Date.now();
-  state.profiles[pid] = {
-    id: pid,
-    name,
-    avatar: state.selectedAvatar || '😎',
-    created: Date.now(),
-    gameState: null,
-  };
+  state.profiles[pid] = { id: pid, name, avatar: state.selectedAvatar || '😎', created: Date.now(), gameState: null };
   saveProfiles();
   state.activeProfileId = pid;
   document.getElementById('player-name-input').value = '';
@@ -527,57 +913,35 @@ function createProfile() {
 function loadProfile(pid) {
   SFX.click();
   state.activeProfileId = pid;
-  const p = state.profiles[pid];
+  const p  = state.profiles[pid];
   const gs = p.gameState;
-
-  if (gs && gs.gameRunning) {
-    // Resume game
-    restoreGameState(gs);
-    showScreen('game');
-    resumeGame();
-  } else if (gs && !gs.gameRunning) {
-    // Game completed — show gameover
-    restoreGameState(gs);
-    showGameOver();
-  } else {
-    // Fresh game — pick job
-    showScreen('job');
-  }
+  if (gs && gs.gameRunning) { restoreGameState(gs); showScreen('game'); resumeGame(); }
+  else if (gs && !gs.gameRunning) { restoreGameState(gs); showGameOver(); }
+  else showScreen('job');
 }
 
 function deleteProfile(pid) {
   if (!confirm('Ta bort ' + state.profiles[pid].name + '?')) return;
-  delete state.profiles[pid];
-  saveProfiles();
-  renderProfiles();
+  delete state.profiles[pid]; saveProfiles(); renderProfiles();
 }
 
 function restoreGameState(gs) {
   Object.assign(state, {
-    balance: gs.balance,
-    month: gs.month,
-    mIncome: gs.mIncome || 0,
-    mTax: gs.mTax || 0,
-    mNetIncome: gs.mNetIncome || 0,
-    mFixed: gs.mFixed || 0,
-    mEvents: gs.mEvents || 0,
-    mRecurring: gs.mRecurring || 0,
-    totalGross: gs.totalGross || 0,
-    totalTax: gs.totalTax || 0,
-    totalFixed: gs.totalFixed || 0,
-    totalEventCosts: gs.totalEventCosts || 0,
-    savingsAccountBalance: gs.savingsAccountBalance || 0,
-    savingsAccountInterest: gs.savingsAccountInterest || 0,
+    balance: gs.balance, month: gs.month,
+    mIncome: gs.mIncome||0, mTax: gs.mTax||0, mNetIncome: gs.mNetIncome||0,
+    mFixed: gs.mFixed||0, mEvents: gs.mEvents||0, mRecurring: gs.mRecurring||0, mFood: gs.mFood||0,
+    totalGross: gs.totalGross||0, totalTax: gs.totalTax||0, totalFixed: gs.totalFixed||0,
+    totalEventCosts: gs.totalEventCosts||0, totalFood: gs.totalFood||0,
+    savingsAccountBalance: gs.savingsAccountBalance||0,
+    savingsAccountInterest: gs.savingsAccountInterest||0,
     job: JOBS.find(j => j.id === gs.jobId) || JOBS[0],
-    recurringCosts: gs.recurringCosts || [],
-    shownEventIds: gs.shownEventIds || [],
-    goal: gs.goal || null,
-    gameRunning: gs.gameRunning,
+    recurringCosts: gs.recurringCosts||[], shownEventIds: gs.shownEventIds||[],
+    goal: gs.goal||null, gameRunning: gs.gameRunning,
   });
 }
 
 // ─────────────────────────────────────────
-//  JOB SELECTION
+//  JOBS
 // ─────────────────────────────────────────
 function renderJobs() {
   const grid = document.getElementById('jobs-grid');
@@ -592,11 +956,8 @@ function renderJobs() {
         </div>
       </div>
       <p class="job-card-desc">${j.desc}</p>
-      <div>
-        ${j.badges.map(b => `<span class="job-badge${b.includes('👆') || b.includes('⚡') ? ' interactive' : ''}">${b}</span>`).join('')}
-      </div>
-    </div>
-  `).join('');
+      <div>${j.badges.map(b => `<span class="job-badge${b.includes('👆')||b.includes('⚡')?' interactive':''}">${b}</span>`).join('')}</div>
+    </div>`).join('');
 }
 
 function selectJob(id) {
@@ -606,7 +967,7 @@ function selectJob(id) {
 }
 
 // ─────────────────────────────────────────
-//  GOAL SELECTION
+//  GOALS
 // ─────────────────────────────────────────
 function renderGoals() {
   const grid = document.getElementById('goals-grid');
@@ -615,62 +976,46 @@ function renderGoals() {
       <span class="goal-emoji">${g.emoji}</span>
       <div class="goal-label">${g.name}</div>
       ${g.amount ? `<div class="goal-price">${fmt(g.amount)}</div>` : '<div class="goal-price">Eget</div>'}
-    </div>
-  `).join('');
+    </div>`).join('');
   document.getElementById('custom-goal-form').style.display = 'none';
 }
 
 function selectGoal(id) {
   SFX.click();
-  if (id === 'custom') {
-    document.getElementById('custom-goal-form').style.display = 'flex';
-    document.getElementById('custom-goal-name').focus();
-    return;
-  }
-  const g = GOALS.find(x => x.id === id);
-  startGame(g);
+  if (id === 'custom') { document.getElementById('custom-goal-form').style.display = 'flex'; return; }
+  startGame(GOALS.find(x => x.id === id));
 }
 
 function setCustomGoal() {
   const name   = document.getElementById('custom-goal-name').value.trim();
   const amount = parseInt(document.getElementById('custom-goal-amount').value, 10);
-  if (!name)  { showToast('Skriv ett namn!', 'info'); return; }
+  if (!name)   { showToast('Skriv ett namn!', 'info'); return; }
   if (!amount || amount < 500) { showToast('Ange ett belopp (minst 500 kr)!', 'info'); return; }
   startGame({ id: 'custom', emoji: '⭐', name, amount, color: '#ff9f43' });
 }
 
 // ─────────────────────────────────────────
-//  GAME INITIALIZATION
+//  GAME START / RESUME
 // ─────────────────────────────────────────
 function startGame(goal) {
   SFX.click();
-  const p = state.profiles[state.activeProfileId];
-
-  // Reset state for new game
-  state.balance             = STARTING_BALANCE;
-  state.month               = 0;
-  state.gameRunning         = true;
-  state.mIncome = state.mTax = state.mNetIncome = 0;
-  state.mFixed = state.mEvents = state.mRecurring = 0;
-  state.totalGross = state.totalTax = state.totalFixed = state.totalEventCosts = 0;
-  state.savingsAccountBalance = state.savingsAccountInterest = 0;
-  state.job                 = state.selectedJob || JOBS[0];
-  state.recurringCosts      = [];
-  state.shownEventIds       = [];
-  state.eventQueue          = shuffleEvents();
-  state.goal                = goal;
-  state.monthElapsed        = 0;
-  state.payElapsed          = 0;
-  state.payProgress         = 0;
-  state.activeInteraction   = null;
-  state.overviewOpen        = false;
-
+  Object.assign(state, {
+    balance: STARTING_BALANCE, month: 0, gameRunning: true, paused: false,
+    mIncome:0,mTax:0,mNetIncome:0,mFixed:0,mEvents:0,mRecurring:0,mFood:0,
+    totalGross:0,totalTax:0,totalFixed:0,totalEventCosts:0,totalFood:0,
+    savingsAccountBalance:0,savingsAccountInterest:0,
+    job: state.selectedJob || JOBS[0],
+    recurringCosts:[], shownEventIds:[], eventQueue: shuffleEvents(),
+    goal, monthElapsed:0, monthLastTick: Date.now(),
+    payElapsed:0, activeInteraction:null, overviewOpen:false,
+    foodPingsFired:[], goalReached:false,
+  });
   showScreen('game');
   initGameUI();
   startMonthTimer();
   scheduleNextEvent();
   if (state.job.interactive) scheduleNextInteraction();
-
+  startMusic();
   saveCurrentGame();
 }
 
@@ -678,53 +1023,54 @@ function resumeGame() {
   state.gameRunning  = true;
   state.eventQueue   = shuffleEvents().filter(e => !state.shownEventIds.includes(e.id));
   state.monthElapsed = 0;
+  state.monthLastTick = Date.now();
   state.payElapsed   = 0;
   state.activeInteraction = null;
-
+  state.foodPingsFired = [];
   initGameUI();
   startMonthTimer();
   scheduleNextEvent();
   if (state.job.interactive) scheduleNextInteraction();
+  startMusic();
 }
 
 function initGameUI() {
   const p = state.profiles[state.activeProfileId];
   document.getElementById('top-avatar').textContent = p.avatar;
   document.getElementById('top-name').textContent   = p.name;
-
-  updateTopBar();
-  updateBalance();
-  updateJobCard();
-  updateOverview();
-  updateGoalDisplay();
-  clearLog();
+  updateTopBar(); updateBalance(); updateJobCard();
+  updateOverview(); updateGoalDisplay(); clearLog();
+  buildCalendar(); updateCalendar();
   addLog('🎮 Spelet startar!', state.balance, true);
   addLog(`💼 Du börjar som ${state.job.name}`, 0, null);
 }
 
 // ─────────────────────────────────────────
-//  MONTH TIMER
+//  MONTH TIMER (proper pause support)
 // ─────────────────────────────────────────
 function startMonthTimer() {
   clearTimeout(state.monthTimer);
-  state.monthElapsed = 0;
-  const startTime = Date.now();
+  state.monthElapsed  = 0;
+  state.monthLastTick = Date.now();
+  baristaAccumulated  = 0;
 
   function tick() {
-    if (!state.gameRunning || state.paused) {
-      state.monthTimer = setTimeout(tick, TICK_MS);
-      return;
+    if (!state.gameRunning) return;
+
+    const now = Date.now();
+    if (!state.paused) {
+      state.monthElapsed  += now - state.monthLastTick;
     }
-    state.monthElapsed = Date.now() - startTime;
+    state.monthLastTick = now;
 
-    const pct = Math.min(state.monthElapsed / MONTH_DURATION, 1);
-    document.getElementById('month-progress-fill').style.width = (pct * 100) + '%';
+    // Update calendar
+    updateCalendar();
 
-    const secsLeft = Math.max(0, Math.ceil((MONTH_DURATION - state.monthElapsed) / 1000));
-    document.getElementById('month-time-display').textContent = secsLeft + ' sek kvar';
+    // Pay progress
+    if (!state.paused) updatePayProgress();
 
-    // Pay progress for timed jobs
-    updatePayProgress();
+    // Food pings
+    checkFoodPings();
 
     if (state.monthElapsed >= MONTH_DURATION) {
       endMonth();
@@ -735,99 +1081,117 @@ function startMonthTimer() {
   state.monthTimer = setTimeout(tick, TICK_MS);
 }
 
+// ─────────────────────────────────────────
+//  FOOD PINGS
+// ─────────────────────────────────────────
+function checkFoodPings() {
+  const pct = state.monthElapsed / MONTH_DURATION;
+  MEAL_SCHEDULE.forEach((meal, i) => {
+    if (pct >= meal.atPct && !state.foodPingsFired.includes(i)) {
+      state.foodPingsFired.push(i);
+      triggerFoodPing(meal);
+    }
+  });
+}
+
+function triggerFoodPing(meal) {
+  const cost = randBetween(meal.minCost, meal.maxCost);
+  state.balance   -= cost;
+  state.mFood     += cost;
+  state.totalFood += cost;
+
+  SFX.food();
+  updateBalance();
+  updateOverview();
+  showFoodToast(meal.emoji, meal.label, cost, meal.day);
+
+  // Log only first meal of each day (Frukost) to avoid log spam — middag always
+  if (meal.label === 'Frukost') {
+    addLog(`${meal.emoji} Dag ${meal.day}: Frukost`, -cost, false);
+  } else if (meal.label === 'Middag') {
+    addLog(`${meal.emoji} Dag ${meal.day}: Middag`, -cost, false);
+  }
+  // Lunch deducted silently (visible in overview)
+}
+
+function showFoodToast(emoji, label, cost, day) {
+  const old = document.querySelector('.food-toast');
+  if (old) old.remove();
+  const t = document.createElement('div');
+  t.className = 'toast food-toast neg';
+  t.textContent = `${emoji} Dag ${day} — ${label}: −${fmt(cost)}`;
+  document.body.appendChild(t);
+  // Very short duration so 90 pings don't pile up
+  setTimeout(() => { t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 900);
+}
+
+// ─────────────────────────────────────────
+//  JOB PAY PROGRESS
+// ─────────────────────────────────────────
+let baristaAccumulated = 0;
+
 function updatePayProgress() {
   const j = state.job;
   if (j.type === 'monthly') {
     const pct = Math.min(state.monthElapsed / MONTH_DURATION, 1);
     const el = document.getElementById('pay-fill');
     if (el) el.style.width = (pct * 100) + '%';
-    document.getElementById('game-job-pay').textContent =
-      `Lön om ca ${Math.max(0, Math.ceil((MONTH_DURATION - state.monthElapsed)/1000))} sek`;
+    const currentDay = Math.floor(Math.min(state.monthElapsed / MONTH_DURATION, 1) * DAYS_PER_MONTH) + 1;
+    const daysLeft = Math.max(0, DAYS_PER_MONTH - currentDay + 1);
+    document.getElementById('game-job-pay').textContent = `Lön om ${daysLeft} dagar`;
   }
-  // Barista pay progress
   if (j.type === 'weekly') {
     const interval = j.payInterval;
-    const pct = (state.payElapsed % interval) / interval;
+    baristaAccumulated += TICK_MS;
+    const pct = (baristaAccumulated % interval) / interval;
     const el = document.getElementById('pay-fill');
     if (el) el.style.width = (pct * 100) + '%';
-    const secsLeft = Math.max(0, Math.ceil((interval - (state.payElapsed % interval)) / 1000));
+    const secsLeft = Math.max(0, Math.ceil((interval - (baristaAccumulated % interval)) / 1000));
     document.getElementById('game-job-pay').textContent = `Nästa lön om ${secsLeft} sek`;
-    state.payElapsed += TICK_MS;
-    if (!state.paused) checkBaristaPay();
-  }
-}
-
-let baristaAccumulated = 0;
-function checkBaristaPay() {
-  const j = state.job;
-  if (j.type !== 'weekly') return;
-  baristaAccumulated += TICK_MS;
-  if (baristaAccumulated >= j.payInterval) {
-    baristaAccumulated = 0;
-    earnIncome(j.payAmount, 'Veckolön');
+    if (baristaAccumulated >= interval) {
+      baristaAccumulated = 0;
+      earnIncome(j.payAmount, 'Veckopeng 💵');
+    }
   }
 }
 
 // ─────────────────────────────────────────
-//  INTERACTION SYSTEM (Delivery / Freelancer)
+//  INTERACTION (Delivery / Datanörd)
 // ─────────────────────────────────────────
 function scheduleNextInteraction() {
   clearTimeout(state.interactionScheduled);
   if (!state.gameRunning) return;
-
   const j = state.job;
-  let delay;
-  if (j.type === 'delivery') {
-    delay = randBetween(j.deliveryInterval[0], j.deliveryInterval[1]);
-  } else if (j.type === 'freelancer') {
-    delay = randBetween(j.projectInterval[0], j.projectInterval[1]);
-  } else return;
-
+  const range = j.type === 'delivery' ? j.deliveryInterval : j.projectInterval;
+  const delay = range ? randBetween(range[0], range[1]) : 20000;
   state.interactionScheduled = setTimeout(() => {
-    if (!state.gameRunning || state.paused) { scheduleNextInteraction(); return; }
+    if (!state.gameRunning) return;
     showInteraction();
   }, delay);
 }
 
 function showInteraction() {
   const j = state.job;
-  let amount, title, emoji;
+  const amount = randItem(j.type === 'delivery' ? j.deliveryAmount : j.projectAmount);
+  const isDelivery = j.type === 'delivery';
+  state.activeInteraction = { amount, timeout: j.interactionTimeout };
 
-  if (j.type === 'delivery') {
-    amount = randItem(j.deliveryAmount);
-    title  = 'Ny leverans!';
-    emoji  = '🚴';
-  } else {
-    amount = randItem(j.projectAmount);
-    title  = 'Projekt klart!';
-    emoji  = '💻';
-  }
-
-  state.activeInteraction = { amount, gross: amount, timeout: j.interactionTimeout };
-  state.interactionElapsed = 0;
-
-  document.getElementById('int-emoji').textContent   = emoji;
-  document.getElementById('int-title').textContent   = title;
-  document.getElementById('int-amount').textContent  = '+' + fmt(Math.round(amount * (1 - TAX_RATE))) + ' netto';
+  document.getElementById('int-emoji').textContent  = isDelivery ? '🚴' : '💻';
+  document.getElementById('int-title').textContent  = isDelivery ? 'Ny leverans!' : 'Projekt klart!';
+  document.getElementById('int-amount').textContent = '+' + fmt(Math.round(amount * (1 - TAX_RATE))) + ' hem';
   document.getElementById('interaction-banner').style.display = 'block';
 
   SFX.alarm();
 
-  const timeoutDur = j.interactionTimeout;
   const startT = Date.now();
-
   function countdown() {
     if (!state.activeInteraction) return;
     const elapsed = Date.now() - startT;
-    const pct = Math.max(0, 1 - elapsed / timeoutDur);
+    const pct = Math.max(0, 1 - elapsed / j.interactionTimeout);
     const fill = document.getElementById('int-timer-fill');
     if (fill) fill.style.width = (pct * 100) + '%';
-
-    if (elapsed >= timeoutDur) {
-      missInteraction();
-    } else {
-      state.interactionTimer = setTimeout(countdown, 100);
-    }
+    if (elapsed >= j.interactionTimeout) missInteraction();
+    else state.interactionTimer = setTimeout(countdown, 100);
   }
   state.interactionTimer = setTimeout(countdown, 100);
 }
@@ -836,13 +1200,9 @@ function acceptInteraction() {
   if (!state.activeInteraction) return;
   clearTimeout(state.interactionTimer);
   SFX.coin();
-
-  const gross = state.activeInteraction.gross;
-  earnIncome(gross, state.job.type === 'delivery' ? 'Leverans' : 'Projekt');
-
+  earnIncome(state.activeInteraction.amount, state.job.type === 'delivery' ? '🚴 Leverans klar!' : '💻 Jobb inlämnat!');
   state.activeInteraction = null;
   document.getElementById('interaction-banner').style.display = 'none';
-
   burstCoins();
   scheduleNextInteraction();
 }
@@ -852,15 +1212,14 @@ function missInteraction() {
   state.activeInteraction = null;
   document.getElementById('interaction-banner').style.display = 'none';
   SFX.spend();
-
-  const label = state.job.type === 'delivery' ? 'Leverans missad!' : 'Projekt missad!';
-  showToast('😬 ' + label, 'neg');
-  addLog('😬 ' + label, 0, false);
+  const lbl = state.job.type === 'delivery' ? 'Leveransen missades! 😬' : 'Jobbet missades! 😬';
+  showToast(lbl, 'neg');
+  addLog('😬 ' + lbl, 0, false);
   scheduleNextInteraction();
 }
 
 // ─────────────────────────────────────────
-//  EVENT SYSTEM
+//  EVENTS (pause month during event)
 // ─────────────────────────────────────────
 function shuffleEvents() {
   return [...EVENTS].sort(() => Math.random() - 0.5);
@@ -869,9 +1228,8 @@ function shuffleEvents() {
 function scheduleNextEvent() {
   clearTimeout(state.eventTimer);
   if (!state.gameRunning) return;
-
-  // Events every 45-110 seconds (spread across 12 months = ~8-10 events total)
-  const delay = randBetween(45000, 110000);
+  // Events every 6-12 seconds of active time = ~5-9 events per month
+  const delay = randBetween(6000, 12000);
   state.eventTimer = setTimeout(() => {
     if (!state.gameRunning || state.paused) { scheduleNextEvent(); return; }
     triggerNextEvent();
@@ -879,8 +1237,7 @@ function scheduleNextEvent() {
 }
 
 function triggerNextEvent() {
-  // Pause month timer logic during event (soft pause)
-  state.paused = true;
+  state.paused = true; // Pause month timer during event!
 
   if (state.eventQueue.length === 0) {
     state.eventQueue = shuffleEvents().filter(e => !state.shownEventIds.includes(e.id));
@@ -916,44 +1273,34 @@ function handleEventChoice(idx) {
   SFX.click();
   const ev     = state.currentEvent;
   const choice = ev.choices[idx];
-
   closeOverlay('overlay-event');
-  state.paused = false;
+  state.paused = false; // Resume month timer
 
-  // Handle effect
   if (choice.effect === 'gamble') {
     const win = Math.random() < choice.gambleOdds;
-    const result = win ? choice.gambleWin : 0;
-    const net    = result - choice.gambleAmt;
-    if (net > 0) {
-      earnIncome(result, 'Aktieinvestering (vinst)');
-      spendMoney(choice.gambleAmt, 'Investering');
-      showToast(`📈 Du vann! +${fmt(result - choice.gambleAmt)} kr`, 'pos');
+    if (win) {
+      earnIncome(choice.gambleWin, 'Aktieinvestering (vinst) 📈');
+      spendMoney(choice.gambleAmt, 'Aktieinvestering');
+      showToast(`📈 Du vann! +${fmt(choice.gambleWin - choice.gambleAmt)}`, 'pos');
     } else {
-      spendMoney(choice.gambleAmt, 'Investering (förlust)');
-      showToast('📉 Du förlorade investeringen!', 'neg');
+      spendMoney(choice.gambleAmt, 'Aktieinvestering (förlust) 📉');
+      showToast('📉 Du förlorade pengarna!', 'neg');
     }
   } else if (choice.effect === 'savings_account') {
     if (state.balance >= choice.savingsAmt) {
-      spendMoney(choice.savingsAmt, 'Sparkonto insättning');
+      spendMoney(choice.savingsAmt, 'Sparkonto insättning 🏦');
       state.savingsAccountBalance += choice.savingsAmt;
-      showToast(`🏦 Sparkonto öppnat! ${fmt(choice.savingsAmt)} insatt.`, 'info');
+      showToast(`🏦 Sparkonto öppnat! ${fmt(choice.savingsAmt)} sparade.`, 'info');
     } else {
       showToast('Inte tillräckligt med pengar!', 'neg');
     }
   } else if (typeof choice.effect === 'number') {
-    if (choice.effect > 0) {
-      earnIncome(choice.effect, ev.title);
-    } else if (choice.effect < 0) {
-      spendMoney(Math.abs(choice.effect), ev.title);
-      state.mEvents += Math.abs(choice.effect);
-    }
+    if (choice.effect > 0)      earnIncome(choice.effect, ev.title);
+    else if (choice.effect < 0) { spendMoney(Math.abs(choice.effect), ev.title); state.mEvents += Math.abs(choice.effect); }
   }
 
-  // Recurring cost
-  if (choice.recurring && choice.effect !== 0) {
-    const existing = state.recurringCosts.find(r => r.name === choice.recurringName);
-    if (!existing) {
+  if (choice.recurring) {
+    if (!state.recurringCosts.find(r => r.name === choice.recurringName)) {
       state.recurringCosts.push({ name: choice.recurringName, amount: Math.abs(choice.effect) });
     }
     updateOverview();
@@ -975,13 +1322,12 @@ function fmt(n) {
 function earnIncome(gross, label) {
   const tax = Math.round(gross * TAX_RATE);
   const net = gross - tax;
-  state.balance       += net;
-  state.mIncome       += gross;
-  state.mTax          += tax;
-  state.mNetIncome    += net;
-  state.totalGross    += gross;
-  state.totalTax      += tax;
-
+  state.balance    += net;
+  state.mIncome    += gross;
+  state.mTax       += tax;
+  state.mNetIncome += net;
+  state.totalGross += gross;
+  state.totalTax   += tax;
   SFX.coin();
   updateBalance(true);
   addLog('💰 ' + label, net, true);
@@ -996,10 +1342,7 @@ function spendMoney(amount, label) {
   addLog('💸 ' + label, -amount, false);
   updateOverview();
   SFX.spend();
-
-  if (state.balance < 0) {
-    showToast('⚠️ Du har minus! Skär ner på utgifterna!', 'neg');
-  }
+  if (state.balance < 0) showToast('⚠️ Du har minus! Skär ner på utgifterna!', 'neg');
 }
 
 function checkGoal() {
@@ -1024,46 +1367,38 @@ function endMonth() {
   clearTimeout(state.interactionTimer);
   document.getElementById('interaction-banner').style.display = 'none';
   state.activeInteraction = null;
+  state.paused = false;
 
   SFX.month();
 
-  // Deduct fixed expenses
-  const rent = FIXED_EXPENSES.rent;
-  const food = FIXED_EXPENSES.food;
-  state.balance -= rent + food;
-  state.mFixed  += rent + food;
-  state.totalFixed += rent + food;
+  // Deduct rent
+  state.balance -= FIXED_EXPENSES.rent;
+  state.mFixed  += FIXED_EXPENSES.rent;
+  state.totalFixed += FIXED_EXPENSES.rent;
 
-  // Deduct recurring costs
+  // Recurring costs
   let recurringTotal = 0;
-  state.recurringCosts.forEach(rc => {
-    state.balance -= rc.amount;
-    recurringTotal += rc.amount;
-  });
+  state.recurringCosts.forEach(rc => { state.balance -= rc.amount; recurringTotal += rc.amount; });
   state.mRecurring = recurringTotal;
 
-  // Monthly job pay
+  // Monthly job salary
   if (state.job.type === 'monthly') {
     const gross = state.job.salary;
     const tax   = Math.round(gross * TAX_RATE);
     const net   = gross - tax;
-    state.balance    += net;
-    state.mIncome    += gross;
-    state.mTax       += tax;
-    state.mNetIncome += net;
-    state.totalGross += gross;
-    state.totalTax   += tax;
+    state.balance += net; state.mIncome += gross; state.mTax += tax;
+    state.mNetIncome += net; state.totalGross += gross; state.totalTax += tax;
     SFX.salary();
-    addLog('💰 Månadslön!', net, true);
+    addLog('💰 Månadslön utbetald!', net, true);
   }
 
-  // Savings account interest (monthly = 2% / 12)
+  // Savings interest (2% yearly = ~0.167% monthly)
   if (state.savingsAccountBalance > 0) {
     const interest = Math.round(state.savingsAccountBalance * 0.02 / 12);
-    state.savingsAccountBalance += interest;
+    state.savingsAccountBalance  += interest;
     state.savingsAccountInterest += interest;
-    state.balance += interest;
-    addLog('🏦 Sparkonto ränta', interest, true);
+    state.balance                += interest;
+    addLog('🏦 Ränta på sparkontot', interest, true);
   }
 
   updateBalance();
@@ -1071,63 +1406,41 @@ function endMonth() {
 }
 
 function showMonthSummary() {
-  const m = state.month + 1;
-  document.getElementById('sum-title').textContent = `Månad ${m} klar! 📅`;
-
-  const net = state.mNetIncome - state.mFixed - state.mRecurring;
+  const m   = state.month + 1;
+  const net = state.mNetIncome - state.mFixed - state.mRecurring - state.mFood;
+  document.getElementById('sum-title').textContent = `Månad ${m} är klar! 📅`;
   document.getElementById('sum-income').textContent  = '+' + fmt(state.mNetIncome);
+  document.getElementById('sum-food').textContent    = '−' + fmt(state.mFood);
   document.getElementById('sum-fixed').textContent   = '−' + fmt(state.mFixed + state.mRecurring);
   document.getElementById('sum-events').textContent  = state.mEvents > 0 ? '−' + fmt(state.mEvents) : '0 kr';
   document.getElementById('sum-events-row').style.display = state.mEvents > 0 ? 'flex' : 'none';
-
   const resultEl = document.getElementById('sum-result');
   resultEl.textContent = (net >= 0 ? '+' : '') + fmt(net);
   resultEl.className   = net >= 0 ? 'positive' : 'negative';
-
   document.getElementById('sum-total').textContent = fmt(state.balance);
-
-  // Tip
-  const tip = MONTH_TIPS[Math.floor(Math.random() * MONTH_TIPS.length)];
-  document.getElementById('sum-tip').textContent = tip;
-
-  // Continue button label
+  document.getElementById('sum-tip').textContent = MONTH_TIPS[Math.floor(Math.random() * MONTH_TIPS.length)];
   const isLast = state.month >= TOTAL_MONTHS - 1;
   document.getElementById('sum-continue-btn').textContent = isLast ? 'Se årsresultat! 🏆' : 'Nästa månad →';
-
   showOverlay('overlay-month');
 }
 
 function continueGame() {
   SFX.click();
   closeOverlay('overlay-month');
-
   const isLast = state.month >= TOTAL_MONTHS - 1;
-  if (isLast) {
-    state.gameRunning = false;
-    saveCurrentGame();
-    setTimeout(showGameOver, 300);
-    return;
-  }
+  if (isLast) { state.gameRunning = false; saveCurrentGame(); setTimeout(showGameOver, 300); return; }
 
-  // Advance month
   state.month++;
-
-  // Reset monthly trackers
   state.mIncome = state.mTax = state.mNetIncome = 0;
-  state.mFixed  = state.mEvents = state.mRecurring = 0;
+  state.mFixed  = state.mEvents = state.mRecurring = state.mFood = 0;
   state.goalReached = false;
+  state.foodPingsFired = [];
+  baristaAccumulated  = 0;
 
-  baristaAccumulated = 0;
-
-  updateTopBar();
-  updateBalance();
-  updateOverview();
+  updateTopBar(); updateBalance(); updateOverview();
   addLog(`📅 ${MONTH_NAMES[state.month]} börjar!`, 0, null);
-
   saveCurrentGame();
-
-  startMonthTimer();
-  scheduleNextEvent();
+  startMonthTimer(); scheduleNextEvent();
   if (state.job.interactive) scheduleNextInteraction();
 }
 
@@ -1141,11 +1454,10 @@ function showJobSwitch() {
     <div class="job-switch-item${state.job.id === j.id ? ' current' : ''}" onclick="switchJob('${j.id}')">
       <span class="jsw-emoji">${j.emoji}</span>
       <div class="jsw-info">
-        <div class="jsw-name">${j.name}${state.job.id === j.id ? ' (nuvarande)' : ''}</div>
+        <div class="jsw-name">${j.name}${state.job.id === j.id ? ' (ditt nuvarande)' : ''}</div>
         <div class="jsw-sal">${j.salaryText}</div>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
   showOverlay('overlay-job-switch');
 }
 
@@ -1154,19 +1466,13 @@ function switchJob(id) {
   closeOverlay('overlay-job-switch');
   const newJob = JOBS.find(j => j.id === id);
   if (!newJob || newJob.id === state.job.id) return;
-
-  // Cancel current job timers
-  clearTimeout(state.interactionScheduled);
-  clearTimeout(state.interactionTimer);
+  clearTimeout(state.interactionScheduled); clearTimeout(state.interactionTimer);
   document.getElementById('interaction-banner').style.display = 'none';
-  state.activeInteraction = null;
-  baristaAccumulated = 0;
-
+  state.activeInteraction = null; baristaAccumulated = 0;
   state.job = newJob;
   updateJobCard();
   addLog(`💼 Bytte jobb till ${newJob.name}`, 0, null);
   showToast(`Välkommen som ${newJob.name}!`, 'info');
-
   if (newJob.interactive) scheduleNextInteraction();
   saveCurrentGame();
 }
@@ -1175,21 +1481,21 @@ function switchJob(id) {
 //  GAME OVER
 // ─────────────────────────────────────────
 function showGameOver() {
-  const totalEarned  = state.totalGross * (1 - TAX_RATE);
-  const savingsPct   = totalEarned > 0 ? state.balance / totalEarned : 0;
+  stopMusic();
+  const totalEarned = state.totalGross * (1 - TAX_RATE);
+  const savingsPct  = totalEarned > 0 ? state.balance / totalEarned : 0;
 
   let trophy = '🏆', title = 'Grattis! Året är slut!';
-  if (state.balance < 0)    { trophy = '😬'; title = 'Tufft år...'; }
-  else if (savingsPct > 0.6) { trophy = '🥇'; title = 'Du är en sparmästare!'; }
-  else if (savingsPct > 0.3) { trophy = '🥈'; title = 'Bra jobbat!'; }
+  if (state.balance < 0)      { trophy = '😬'; title = 'Tufft år...'; }
+  else if (savingsPct > 0.6)  { trophy = '🥇'; title = 'Du är en sparmästare!'; }
+  else if (savingsPct > 0.3)  { trophy = '🥈'; title = 'Bra jobbat!'; }
 
   document.getElementById('go-trophy').textContent = trophy;
   document.getElementById('go-title').textContent  = title;
   document.getElementById('go-amount').textContent = fmt(state.balance);
 
-  // Badge
   let badge = '';
-  if (savingsPct > 0.6)      badge = '🏅 Mäster-Sparare';
+  if (savingsPct > 0.6)     badge = '🏅 Mäster-Sparare';
   else if (savingsPct > 0.4) badge = '⭐ Klok Ekonom';
   else if (savingsPct > 0.2) badge = '📈 På Rätt Spår';
   else if (savingsPct > 0)   badge = '💡 Börjar Förstå';
@@ -1201,32 +1507,27 @@ function showGameOver() {
   }
   document.getElementById('go-badge').textContent = badge;
 
-  // Stats
   const stats = [
-    ['💰 Total bruttolön', fmt(state.totalGross)],
-    ['🏛️ Skatt betald',   fmt(state.totalTax)],
-    ['💵 Total nettolön',  fmt(state.totalGross - state.totalTax)],
-    ['🏠 Hyra & mat',     '−' + fmt(state.totalFixed)],
-    ['🎭 Händelsekostnader', '−' + fmt(state.totalEventCosts)],
-    ...(state.savingsAccountInterest > 0 ? [['🏦 Ränteintäkter', '+' + fmt(state.savingsAccountInterest)]] : []),
-    ['📊 Sparkvot',        Math.round(savingsPct * 100) + '%'],
+    ['💰 Totalt tjänat (före skatt)', fmt(state.totalGross)],
+    ['🏛️ Skatt du betalat till staten', fmt(state.totalTax)],
+    ['💵 Pengar du fick hem', fmt(state.totalGross - state.totalTax)],
+    ['🏠 Hyra betald totalt', '−' + fmt(state.totalFixed)],
+    ['🍽️ Mat du ätit totalt', '−' + fmt(state.totalFood)],
+    ['🎭 Roliga saker du köpte', '−' + fmt(state.totalEventCosts)],
+    ...(state.savingsAccountInterest > 0 ? [['🏦 Ränta du tjänat', '+' + fmt(state.savingsAccountInterest)]] : []),
+    ['📊 Din sparandeprocent', Math.round(savingsPct * 100) + '%'],
   ];
+  document.getElementById('go-stats-list').innerHTML = stats.map(([k,v]) =>
+    `<div class="go-stat-row"><span>${k}</span><span>${v}</span></div>`).join('');
 
-  document.getElementById('go-stats-list').innerHTML = stats.map(([k,v]) => `
-    <div class="go-stat-row"><span>${k}</span><span>${v}</span></div>
-  `).join('');
-
-  // Wisdom
   const wisdom = WISDOM.find(w => savingsPct >= w.minSavings) || WISDOM[WISDOM.length - 1];
   document.getElementById('go-wisdom').innerHTML = `<p>"${wisdom.text}"</p>`;
-
   showScreen('gameover');
   SFX.win();
 }
 
 function playAgain() {
   SFX.click();
-  // Clear game state for this profile
   if (state.activeProfileId && state.profiles[state.activeProfileId]) {
     state.profiles[state.activeProfileId].gameState = null;
     saveProfiles();
@@ -1236,8 +1537,8 @@ function playAgain() {
 }
 
 function confirmQuit() {
-  if (confirm('Avsluta spelet? Ditt framsteg sparas automatiskt.')) {
-    clearAllTimers();
+  if (confirm('Avsluta? Ditt framsteg sparas!')) {
+    clearAllTimers(); stopMusic();
     state.gameRunning = false;
     saveCurrentGame();
     showScreen('profiles');
@@ -1245,10 +1546,8 @@ function confirmQuit() {
 }
 
 function clearAllTimers() {
-  clearTimeout(state.monthTimer);
-  clearTimeout(state.eventTimer);
-  clearTimeout(state.interactionScheduled);
-  clearTimeout(state.interactionTimer);
+  clearTimeout(state.monthTimer); clearTimeout(state.eventTimer);
+  clearTimeout(state.interactionScheduled); clearTimeout(state.interactionTimer);
 }
 
 // ─────────────────────────────────────────
@@ -1257,22 +1556,11 @@ function clearAllTimers() {
 function updateBalance(bump = false) {
   const el = document.getElementById('balance-display');
   el.textContent = fmt(state.balance);
-  if (bump) {
-    el.classList.remove('bump');
-    void el.offsetWidth; // reflow
-    el.classList.add('bump');
-  }
-
-  // Month change sub-label
-  const net = state.mNetIncome - state.mFixed - state.mRecurring - state.mEvents;
+  if (bump) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  const net = state.mNetIncome - state.mFixed - state.mRecurring - state.mFood - state.mEvents;
   const sub = document.getElementById('balance-month-change');
-  if (net !== 0) {
-    sub.textContent = 'Denna månad: ' + (net >= 0 ? '+' : '') + fmt(net);
-    sub.style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
-  } else {
-    sub.textContent = '';
-  }
-
+  if (net !== 0) { sub.textContent = 'Denna månad: ' + (net >= 0 ? '+' : '') + fmt(net); sub.style.color = net >= 0 ? 'var(--green)' : 'var(--red)'; }
+  else sub.textContent = '';
   updateGoalDisplay();
 }
 
@@ -1281,153 +1569,152 @@ function updateTopBar() {
   document.getElementById('month-name-display').textContent = `${MONTH_NAMES[state.month]} 2025`;
 }
 
+function buildCalendar() {
+  const grid = document.getElementById('calendar-grid');
+  grid.innerHTML = '';
+  for (let d = 1; d <= DAYS_PER_MONTH; d++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    el.id = `cal-day-${d}`;
+    grid.appendChild(el);
+  }
+}
+
+function updateCalendar() {
+  const pct = Math.min(state.monthElapsed / MONTH_DURATION, 1);
+  const currentDay = Math.floor(pct * DAYS_PER_MONTH) + 1; // 1..30
+
+  for (let d = 1; d <= DAYS_PER_MONTH; d++) {
+    const el = document.getElementById(`cal-day-${d}`);
+    if (!el) continue;
+    el.className = 'cal-day';
+    el.textContent = '';
+    if (d < currentDay) {
+      el.classList.add('done');
+    } else if (d === currentDay) {
+      el.classList.add('today');
+      el.textContent = '☀️';
+    } else {
+      el.textContent = d;
+    }
+  }
+
+  const secsLeft = Math.max(0, Math.ceil((MONTH_DURATION - state.monthElapsed) / 1000));
+  document.getElementById('month-time-display').textContent =
+    state.paused ? '⏸ Pausad' : `Dag ${Math.min(currentDay, 30)}/30`;
+}
+
 function updateJobCard() {
   const j = state.job;
   document.getElementById('game-job-emoji').textContent = j.emoji;
   document.getElementById('game-job-name').textContent  = j.name;
-  document.getElementById('pay-track').style.display    = j.type !== 'delivery' && j.type !== 'freelancer' ? 'block' : 'none';
+  document.getElementById('pay-track').style.display    = (j.type === 'delivery' || j.type === 'freelancer') ? 'none' : 'block';
 }
 
 function updateGoalDisplay() {
   const g = state.goal;
   const sec = document.getElementById('goal-section');
   if (!g || !g.amount) { sec.style.display = 'none'; return; }
-  sec.style.display = 'block';
-  document.getElementById('goal-emoji-display').textContent   = g.emoji;
-  document.getElementById('goal-name-display').textContent    = g.name;
-  document.getElementById('goal-target-display').textContent  = '/ ' + fmt(g.amount);
+  sec.style.display = 'flex';
   const cur = Math.max(0, Math.min(state.balance, g.amount));
   const pct = Math.min(100, Math.round(cur / g.amount * 100));
+
+  document.getElementById('goal-emoji-display').textContent   = g.emoji;
+  document.getElementById('goal-name-display').textContent    = g.name;
+  document.getElementById('goal-target-display').textContent  = fmt(g.amount);
   document.getElementById('goal-current-display').textContent = fmt(cur);
   document.getElementById('goal-percent-display').textContent = pct + '%';
-  document.getElementById('goal-progress-fill').style.width   = pct + '%';
+
+  // Vertical bar fill + emoji position
+  document.getElementById('goal-progress-fill').style.height = pct + '%';
+  const emoji = document.getElementById('goal-emoji-display');
+  emoji.style.bottom = Math.max(2, pct) + '%';
 }
 
 function updateOverview() {
-  const gross = state.mIncome;
-  const tax   = state.mTax;
-  const net   = state.mNetIncome;
+  document.getElementById('ov-gross').textContent      = state.mIncome > 0 ? '+' + fmt(state.mIncome) : '0 kr';
+  document.getElementById('ov-tax').textContent        = state.mTax   > 0 ? '−' + fmt(state.mTax)    : '0 kr';
+  document.getElementById('ov-net-income').textContent = fmt(state.mNetIncome);
+  document.getElementById('ov-food').textContent       = state.mFood  > 0 ? '−' + fmt(state.mFood)   : '0 kr';
 
-  document.getElementById('ov-gross').textContent      = gross > 0 ? '+' + fmt(gross) : '0 kr';
-  document.getElementById('ov-tax').textContent        = tax   > 0 ? '−' + fmt(tax)   : '0 kr';
-  document.getElementById('ov-net-income').textContent = fmt(net);
-
-  // Recurring
   const recurEl = document.getElementById('ov-recurring-rows');
   recurEl.innerHTML = state.recurringCosts.map(rc =>
-    `<div class="ov-row negative-row"><span>${rc.name}</span><span>−${fmt(rc.amount)}</span></div>`
-  ).join('');
+    `<div class="ov-row negative-row"><span>${rc.name}</span><span>−${fmt(rc.amount)}</span></div>`).join('');
 
-  // Events
   const evRow = document.getElementById('ov-events-row');
-  if (state.mEvents > 0) {
-    evRow.style.display = 'flex';
-    document.getElementById('ov-events').textContent = '−' + fmt(state.mEvents);
-  } else {
-    evRow.style.display = 'none';
-  }
+  if (state.mEvents > 0) { evRow.style.display = 'flex'; document.getElementById('ov-events').textContent = '−' + fmt(state.mEvents); }
+  else evRow.style.display = 'none';
 
-  // Net
-  const totalOut = FIXED_EXPENSES.rent + FIXED_EXPENSES.food +
+  const totalOut = FIXED_EXPENSES.rent + state.mFood +
     state.recurringCosts.reduce((a, rc) => a + rc.amount, 0) + state.mEvents;
-  const monthNet = net - totalOut;
+  const monthNet = state.mNetIncome - totalOut;
   const netEl = document.getElementById('ov-net');
   netEl.innerHTML = `<b>${(monthNet >= 0 ? '+' : '') + fmt(monthNet)}</b>`;
   netEl.style.color = monthNet >= 0 ? 'var(--green)' : 'var(--red)';
 }
 
 function toggleOverview(headerEl) {
-  const body = document.getElementById('overview-body');
   state.overviewOpen = !state.overviewOpen;
-  body.classList.toggle('open', state.overviewOpen);
+  document.getElementById('overview-body').classList.toggle('open', state.overviewOpen);
   headerEl.classList.toggle('open', state.overviewOpen);
 }
 
 // ─────────────────────────────────────────
-//  EVENT LOG
+//  LOG & TOAST
 // ─────────────────────────────────────────
 function addLog(desc, amount, positive) {
-  const log = document.getElementById('event-log');
+  const log   = document.getElementById('event-log');
   const entry = document.createElement('div');
   entry.className = 'log-entry';
-
   let amtText = '', amtClass = '';
-  if (amount > 0)  { amtText = '+' + fmt(amount); amtClass = 'pos'; }
-  if (amount < 0)  { amtText = fmt(amount); amtClass = 'neg'; }
-
-  entry.innerHTML = `<span class="log-desc">${desc}</span>
-    ${amtText ? `<span class="log-amt ${amtClass}">${amtText}</span>` : ''}`;
-
+  if (amount > 0) { amtText = '+' + fmt(amount); amtClass = 'pos'; }
+  if (amount < 0) { amtText = fmt(amount);        amtClass = 'neg'; }
+  entry.innerHTML = `<span class="log-desc">${desc}</span>${amtText ? `<span class="log-amt ${amtClass}">${amtText}</span>` : ''}`;
   log.insertBefore(entry, log.firstChild);
-
-  // Keep max 10 entries
-  while (log.children.length > 10) log.removeChild(log.lastChild);
+  while (log.children.length > 12) log.removeChild(log.lastChild);
 }
 
-function clearLog() {
-  document.getElementById('event-log').innerHTML = '';
-}
+function clearLog() { document.getElementById('event-log').innerHTML = ''; }
 
-// ─────────────────────────────────────────
-//  TOAST
-// ─────────────────────────────────────────
 function showToast(msg, type = 'info') {
-  const old = document.querySelector('.toast');
+  const old = document.querySelector('.toast:not(.food-toast)');
   if (old) old.remove();
-
   const t = document.createElement('div');
   t.className = 'toast ' + type;
   t.textContent = msg;
   document.body.appendChild(t);
-
-  setTimeout(() => {
-    t.style.transition = 'opacity 0.4s';
-    t.style.opacity = '0';
-    setTimeout(() => t.remove(), 400);
-  }, 2500);
+  setTimeout(() => { t.style.transition = 'opacity 0.4s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 2500);
 }
 
 // ─────────────────────────────────────────
-//  COIN BURST ANIMATION
+//  COINS BURST
 // ─────────────────────────────────────────
 function burstCoins() {
   const container = document.getElementById('coin-burst');
-  const coins = ['🪙','💰','✨','⭐'];
-  for (let i = 0; i < 10; i++) {
-    const c = document.createElement('div');
-    c.className = 'burst-coin';
-    c.textContent = randItem(coins);
-    const dx = (Math.random() - 0.5) * 200;
-    const dy = -(Math.random() * 150 + 80);
-    c.style.cssText = `left:${30 + Math.random()*40}%;top:40%;--dx:${dx}px;--dy:${dy}px;animation-delay:${i*50}ms`;
-    container.appendChild(c);
-    setTimeout(() => c.remove(), 900);
-  }
+  ['🪙','💰','✨','⭐'].forEach((e, _) => {
+    for (let i = 0; i < 3; i++) {
+      const c = document.createElement('div');
+      c.className = 'burst-coin';
+      c.textContent = e;
+      const dx = (Math.random() - 0.5) * 200;
+      const dy = -(Math.random() * 150 + 80);
+      c.style.cssText = `left:${30+Math.random()*40}%;top:40%;--dx:${dx}px;--dy:${dy}px;animation-delay:${Math.random()*200}ms`;
+      container.appendChild(c);
+      setTimeout(() => c.remove(), 1000);
+    }
+  });
 }
 
 // ─────────────────────────────────────────
-//  SOUND TOGGLE
+//  UTILS
 // ─────────────────────────────────────────
-function toggleSound() {
-  state.soundEnabled = !state.soundEnabled;
-  document.getElementById('sound-btn').textContent = state.soundEnabled ? '🔊' : '🔇';
-}
+function randBetween(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // ─────────────────────────────────────────
-//  UTILITIES
-// ─────────────────────────────────────────
-function randBetween(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-function randItem(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-// ─────────────────────────────────────────
-//  ENTRY POINT
+//  INIT
 // ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadProfiles();
-  // Init audio on first interaction
   document.addEventListener('click', () => { initAudio(); }, { once: true });
 });
