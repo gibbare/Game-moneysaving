@@ -1,0 +1,10 @@
+{
+  "name": "livet-som-spel",
+  "version": "1.0.0",
+  "description": "Pengaspelet – Lär dig hantera pengar!",
+  "scripts": {
+    "start": "npx --yes serve . -p 3000"
+  },
+  "keywords": ["game", "money", "educational"],
+  "license": "MIT"
+}
