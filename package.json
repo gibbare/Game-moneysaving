@@ -2,8 +2,12 @@
   "name": "livet-som-spel",
   "version": "1.0.0",
   "description": "Pengaspelet – Lär dig hantera pengar!",
+  "main": "server.js",
   "scripts": {
-    "start": "npx --yes serve . -p 3000"
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "keywords": ["game", "money", "educational"],
   "license": "MIT"
