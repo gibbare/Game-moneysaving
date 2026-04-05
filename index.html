@@ -130,14 +130,15 @@
   <!-- Balance + Goal row -->
   <div class="hero-row">
     <!-- Balance (left) -->
-    <div class="balance-card card card-gold">
+    <div class="balance-card card card-gold" onclick="toggleManualPause()">
       <div class="balance-label">🏦 På kontot</div>
       <div class="balance-amount" id="balance-display">2 000 kr</div>
       <div class="balance-sub" id="balance-month-change"></div>
+      <div class="pause-indicator" id="pause-indicator" style="display:none">⏸ PAUSAT — tryck för att fortsätta</div>
     </div>
 
     <!-- Goal bar (right) — hidden if no goal -->
-    <div class="goal-bar-card card" id="goal-section" style="display:none">
+    <div class="goal-bar-card card" id="goal-section" style="display:none" onclick="showExplanation('goal')" title="Tryck för förklaring">
       <div class="goal-bar-target" id="goal-target-display">0 kr</div>
       <div class="goal-bar-track">
         <div class="goal-bar-fill" id="goal-progress-fill" style="height:0%"></div>
@@ -150,14 +151,14 @@
   </div>
 
   <!-- Job Card -->
-  <div class="job-card card" id="job-card">
+  <div class="job-card card" id="job-card" onclick="showExplanation('job')" title="Tryck för förklaring">
     <div class="job-row">
       <span id="game-job-emoji" class="job-emoji-big">💼</span>
       <div class="job-details">
         <div id="game-job-name" class="job-title">Ditt jobb</div>
         <div id="game-job-pay" class="job-pay-line">Nästa lön: —</div>
       </div>
-      <button class="btn-sm btn-outline-sm" onclick="showJobSwitch()">Byt jobb</button>
+      <button class="btn-sm btn-outline-sm" onclick="event.stopPropagation(); showJobSwitch()">Byt jobb</button>
     </div>
     <div class="pay-track" id="pay-track" style="display:none">
       <div class="pay-fill" id="pay-fill" style="width:0%"></div>
@@ -165,7 +166,7 @@
   </div>
 
   <!-- Month Calendar -->
-  <div class="calendar-section card">
+  <div class="calendar-section card" onclick="showExplanation('calendar')" title="Tryck för förklaring">
     <div class="calendar-header">
       <span id="month-name-display" class="cal-month-name">Januari 2025</span>
       <span id="month-time-display" class="cal-time-left">60 sek kvar</span>
@@ -174,8 +175,8 @@
   </div>
 
   <!-- Monthly Overview -->
-  <div class="overview-card card">
-    <div class="overview-header" onclick="toggleOverview(this)">
+  <div class="overview-card card" onclick="showExplanation('overview')" title="Tryck för förklaring">
+    <div class="overview-header" onclick="event.stopPropagation(); toggleOverview(this)">
       <span>📊 Vad har hänt denna månad?</span>
       <span class="toggle-arrow">▼</span>
     </div>
@@ -208,7 +209,7 @@
   </div>
 
   <!-- Event Log -->
-  <div class="log-section">
+  <div class="log-section" onclick="showExplanation('log')" title="Tryck för förklaring">
     <div class="log-title">📜 Vad som hände</div>
     <div id="event-log" class="event-log"></div>
   </div>
@@ -290,6 +291,17 @@
       <button class="btn btn-primary" onclick="playAgain()">🔄 Spela igen</button>
       <button class="btn btn-outline" onclick="showScreen('profiles')">👤 Ny spelare</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ EXPLANATION OVERLAY ═══════════════════════════ -->
+<div id="overlay-explain" class="overlay" style="display:none">
+  <div class="overlay-box">
+    <div class="pause-pill">⏸ Månaden är pausad</div>
+    <div id="exp-emoji" class="exp-emoji">📖</div>
+    <h2 id="exp-title">Förklaring</h2>
+    <div id="exp-body" class="exp-body"></div>
+    <button class="btn btn-primary" onclick="closeExplanation()">Fortsätt spelet ▶</button>
   </div>
 </div>
 

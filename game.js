@@ -1706,6 +1706,97 @@ function burstCoins() {
 }
 
 // ─────────────────────────────────────────
+//  PAUSE & EXPLANATIONS
+// ─────────────────────────────────────────
+const EXPLANATIONS = {
+  goal: {
+    emoji: '🎯',
+    title: 'Ditt sparmål',
+    body: `<p>Det här är <b>ditt sparmål</b> — det du drömmer om att köpa!</p>
+           <p>Staplarna visar hur nära du är. Ju mer du sparar varje månad, desto snabbare fyller du staplarna.</p>
+           <p>💡 Hemligheten är att <b>inte spendera allt</b> du tjänar. Lite kvar varje månad räcker långt!</p>`,
+  },
+  job: {
+    emoji: '💼',
+    title: 'Ditt jobb',
+    body: `<p>Jobbet avgör <b>hur mycket pengar du tjänar</b> varje månad.</p>
+           <p>Men kom ihåg — du betalar alltid <b>30% i skatt</b> till staten. Skatten betalar för skolor, sjukhus och vägar!</p>
+           <p>Olika jobb betalar på olika sätt: en gång i månaden, varje vecka eller per uppdrag. Välj det som passar dig!</p>`,
+  },
+  calendar: {
+    emoji: '📅',
+    title: 'Månadskalendern',
+    body: `<p>Kalendern visar hur månaden går!</p>
+           <p>Varje ruta är en dag. ☀️ är idag. ✓ är dagar som gått.</p>
+           <p>Varje dag kostar mat pengar — frukost 🥣, lunch 🥪 och middag 🍝!</p>
+           <p>💡 Tänk på att planera: om lönen inte kommer förrän sista dagen måste du ha pengar kvar till mat hela månaden!</p>`,
+  },
+  overview: {
+    emoji: '📊',
+    title: 'Månadsöversikten',
+    body: `<p><b>Vad du tjänade</b> = din lön INNAN skatt (bruttolön).</p>
+           <p><b>Skatt (30%)</b> = pengar som går till samhället.</p>
+           <p><b>Pengar kvar efter skatt</b> = vad du faktiskt får hem (nettolön).</p>
+           <p>Från det drar vi hyra, mat och saker du köpt. Det som är kvar är det du <b>sparar</b>!</p>
+           <p>💡 Försök alltid ha ett <b>plus</b> på raden "Hur det gick" — det betyder att du sparar pengar!</p>`,
+  },
+  log: {
+    emoji: '📜',
+    title: 'Händelseloggen',
+    body: `<p>Här ser du <b>allt som hänt med dina pengar</b>!</p>
+           <p>🟢 <b>Gröna siffror</b> = pengar som kom IN på kontot. Bra!</p>
+           <p>🔴 <b>Röda siffror</b> = pengar som gick UT. Tänk om det var värt det!</p>
+           <p>💡 I verkligheten kan du se alla dina transaktioner i din banks app. Att ha koll kallas att <b>budgetera</b>!</p>`,
+  },
+};
+
+function toggleManualPause() {
+  if (!state.gameRunning) return;
+  SFX.click();
+  state.paused = !state.paused;
+  const indicator = document.getElementById('pause-indicator');
+  const card = document.querySelector('.balance-card');
+  if (state.paused) {
+    if (indicator) indicator.style.display = 'block';
+    if (card) card.classList.add('is-paused');
+  } else {
+    if (indicator) indicator.style.display = 'none';
+    if (card) card.classList.remove('is-paused');
+  }
+  updateCalendar();
+}
+
+function showExplanation(key) {
+  if (!state.gameRunning) return;
+  const exp = EXPLANATIONS[key];
+  if (!exp) return;
+  SFX.click();
+  // Pause the game while reading
+  state.paused = true;
+  // Show pause indicator on balance card too
+  const indicator = document.getElementById('pause-indicator');
+  const card = document.querySelector('.balance-card');
+  if (indicator) indicator.style.display = 'block';
+  if (card) card.classList.add('is-paused');
+  updateCalendar();
+  document.getElementById('exp-emoji').textContent = exp.emoji;
+  document.getElementById('exp-title').textContent = exp.title;
+  document.getElementById('exp-body').innerHTML = exp.body;
+  showOverlay('overlay-explain');
+}
+
+function closeExplanation() {
+  SFX.click();
+  closeOverlay('overlay-explain');
+  state.paused = false;
+  const indicator = document.getElementById('pause-indicator');
+  const card = document.querySelector('.balance-card');
+  if (indicator) indicator.style.display = 'none';
+  if (card) card.classList.remove('is-paused');
+  updateCalendar();
+}
+
+// ─────────────────────────────────────────
 //  UTILS
 // ─────────────────────────────────────────
 function randBetween(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }

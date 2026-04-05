@@ -951,6 +951,54 @@ html, body {
   100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
 }
 
+/* ── BALANCE CARD PAUSE STATE ───────────── */
+.balance-card { cursor: pointer; transition: box-shadow 0.2s; }
+.balance-card:active { opacity: 0.85; }
+.balance-card.is-paused {
+  box-shadow: 0 0 0 2px var(--orange), 0 4px 24px rgba(255,159,67,0.25);
+}
+.pause-indicator {
+  margin-top: 0.4rem;
+  background: rgba(255,159,67,0.18);
+  border: 1px solid rgba(255,159,67,0.45);
+  border-radius: 20px;
+  color: var(--orange);
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.25rem 0.6rem;
+  text-align: center;
+  letter-spacing: 0.02em;
+  animation: pausePulse 1s ease-in-out infinite;
+}
+@keyframes pausePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* ── EXPLANATION OVERLAY ────────────────── */
+.exp-emoji {
+  font-size: 3rem;
+  margin: 0.25rem 0 0.5rem;
+}
+.exp-body {
+  text-align: left;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0.75rem 0 1.25rem;
+}
+.exp-body p {
+  margin: 0.5rem 0;
+}
+.exp-body b {
+  color: var(--gold);
+}
+
+/* Clickable cards hint */
+.job-card, .calendar-section, .overview-card, .log-section, .goal-bar-card {
+  cursor: pointer;
+}
+
 /* ── PAUSE PILL ─────────────────────────── */
 .pause-pill {
   display: inline-block;
