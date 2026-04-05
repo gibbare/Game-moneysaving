@@ -1156,6 +1156,13 @@ function initAudio() {
   } catch(e) {}
 }
 
+// iOS kräver explicit resume av AudioContext efter användarinteraktion
+function resumeAudioCtx() {
+  if (state.audioCtx && state.audioCtx.state === 'suspended') {
+    state.audioCtx.resume().catch(() => {});
+  }
+}
+
 function playTone(freq, dur, type = 'sine', vol = 0.25, delay = 0) {
   if (!state.soundEnabled || !state.audioCtx) return;
   try {
@@ -1190,12 +1197,17 @@ function startMusic() {
   const el = _audioEl();
   if (!el) return;
   if (!state.musicEnabled || !state.soundEnabled) { el.pause(); return; }
+  resumeAudioCtx();
   const track = TRACKS[state.currentTrack];
+  // Always set src if not already playing this track
   if (!el.src || !el.src.includes(encodeURIComponent(track.name).replace(/%20/g,'%20'))) {
     el.src = track.url;
+    el.load(); // iOS needs explicit load() before play()
   }
   el.volume = 0.4;
-  el.play().catch(() => {});
+  // iOS: play() returns a Promise — catch rejection silently
+  const p = el.play();
+  if (p && typeof p.catch === 'function') p.catch(() => {});
   showNowPlaying(track);
 }
 
@@ -1228,7 +1240,12 @@ function nextTrack() {
   const el = _audioEl();
   if (el) {
     el.src = track.url;
-    if (state.musicEnabled && state.soundEnabled) el.play().catch(() => {});
+    el.load(); // iOS needs explicit load() before play()
+    if (state.musicEnabled && state.soundEnabled) {
+      resumeAudioCtx();
+      const p = el.play();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    }
   }
   showNowPlaying(track);
 }
@@ -2374,5 +2391,15 @@ function randItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 // ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadProfiles();
-  document.addEventListener('click', () => { initAudio(); }, { once: true });
+
+  // Initiera audio vid första interaktion (click eller touch)
+  function firstInteraction() {
+    initAudio();
+    resumeAudioCtx();
+  }
+  document.addEventListener('click',      firstInteraction, { once: true });
+  document.addEventListener('touchstart', firstInteraction, { once: true, passive: true });
+
+  // iOS: resume AudioContext på varje touch (kan suspenderas om skärmen låses etc.)
+  document.addEventListener('touchstart', () => { resumeAudioCtx(); }, { passive: true });
 });
