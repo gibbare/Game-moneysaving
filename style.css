@@ -692,7 +692,25 @@ html, body {
 
 /* ── EVENT LOG ──────────────────────────── */
 .log-section { padding: 0 1rem; }
-.log-title { font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-bottom: 0.4rem; }
+.log-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+.log-title { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.btn-cooking {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-cooking.active {
+  background: rgba(67, 233, 123, 0.15);
+  border-color: var(--green);
+  color: var(--green);
+}
 .event-log { display: flex; flex-direction: column; gap: 0.3rem; }
 .log-entry {
   display: flex;

@@ -210,7 +210,12 @@
 
   <!-- Event Log -->
   <div class="log-section" onclick="showExplanation('log')" title="Tryck för förklaring">
-    <div class="log-title">📜 Vad som hände</div>
+    <div class="log-title-row">
+      <span class="log-title">📜 Vad som hände</span>
+      <button id="cooking-btn" class="btn-cooking" onclick="event.stopPropagation(); showCookingOverlay()" title="Välj om du lagar mat hemma">
+        🏪 Köper mat
+      </button>
+    </div>
     <div id="event-log" class="event-log"></div>
   </div>
 
@@ -290,6 +295,26 @@
     <div class="go-btns">
       <button class="btn btn-primary" onclick="playAgain()">🔄 Spela igen</button>
       <button class="btn btn-outline" onclick="showScreen('profiles')">👤 Ny spelare</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ COOKING OVERLAY ═══════════════════════════ -->
+<div id="overlay-cooking" class="overlay" style="display:none">
+  <div class="overlay-box">
+    <div class="pause-pill">⏸ Månaden är pausad</div>
+    <div class="ev-emoji">🍳</div>
+    <h2>Laga din egen mat?</h2>
+    <p class="ev-desc">Att laga sin egen mat och även ta med på jobbet sparar pengar. Vill du börja med att laga din egen mat och inte köpa färdig mat?</p>
+    <div class="ev-choices">
+      <button class="ev-choice-btn positive" onclick="setCooking(true)">
+        🍳 Ja, jag lagar hemma!
+        <span class="choice-effect pos">~50% billigare mat</span>
+      </button>
+      <button class="ev-choice-btn negative" onclick="setCooking(false)">
+        🏪 Nej, jag köper färdig mat
+        <span class="choice-effect neg">Dyrare men bekvämt</span>
+      </button>
     </div>
   </div>
 </div>

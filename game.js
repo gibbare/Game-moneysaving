@@ -780,6 +780,8 @@ let state = {
   currentEvent: null,
   // Food pings
   foodPingsFired: [],
+  // Cooking at home
+  cookingAtHome: false,
   // Goal
   goal: null, goalReached: false,
   // Selection
@@ -930,6 +932,7 @@ function saveCurrentGame() {
     recurringCosts: state.recurringCosts,
     shownEventIds: state.shownEventIds,
     goal: state.goal, gameRunning: state.gameRunning,
+    cookingAtHome: state.cookingAtHome,
   };
   saveProfiles();
 }
@@ -1025,6 +1028,7 @@ function restoreGameState(gs) {
     job: JOBS.find(j => j.id === gs.jobId) || JOBS[0],
     recurringCosts: gs.recurringCosts||[], shownEventIds: gs.shownEventIds||[],
     goal: gs.goal||null, gameRunning: gs.gameRunning,
+    cookingAtHome: gs.cookingAtHome || false,
   });
 }
 
@@ -1096,7 +1100,7 @@ function startGame(goal) {
     recurringCosts:[], shownEventIds:[], eventQueue: shuffleEvents(),
     goal, monthElapsed:0, monthLastTick: Date.now(),
     payElapsed:0, activeInteraction:null, overviewOpen:false,
-    foodPingsFired:[], goalReached:false,
+    foodPingsFired:[], goalReached:false, cookingAtHome:false,
   });
   showScreen('game');
   initGameUI();
@@ -1128,7 +1132,7 @@ function initGameUI() {
   document.getElementById('top-name').textContent   = p.name;
   updateTopBar(); updateBalance(); updateJobCard();
   updateOverview(); updateGoalDisplay(); clearLog();
-  buildCalendar(); updateCalendar();
+  buildCalendar(); updateCalendar(); updateCookingBtn();
   addLog('🎮 Spelet startar!', state.balance, true);
   addLog(`💼 Du börjar som ${state.job.name}`, 0, null);
 }
@@ -1183,7 +1187,8 @@ function checkFoodPings() {
 }
 
 function triggerFoodPing(meal) {
-  const cost = randBetween(meal.minCost, meal.maxCost);
+  const rawCost = randBetween(meal.minCost, meal.maxCost);
+  const cost = state.cookingAtHome ? Math.round(rawCost * 0.5) : rawCost;
   state.balance   -= cost;
   state.mFood     += cost;
   state.totalFood += cost;
@@ -1839,6 +1844,49 @@ const EXPLANATIONS = {
            <p>💡 I verkligheten kan du se alla dina transaktioner i din banks app. Att ha koll kallas att <b>budgetera</b>!</p>`,
   },
 };
+
+function showCookingOverlay() {
+  if (!state.gameRunning) return;
+  SFX.click();
+  state.paused = true;
+  const indicator = document.getElementById('pause-indicator');
+  const card = document.querySelector('.balance-card');
+  if (indicator) indicator.style.display = 'block';
+  if (card) card.classList.add('is-paused');
+  updateCalendar();
+  showOverlay('overlay-cooking');
+}
+
+function setCooking(val) {
+  SFX.click();
+  closeOverlay('overlay-cooking');
+  state.cookingAtHome = val;
+  state.paused = false;
+  const indicator = document.getElementById('pause-indicator');
+  const card = document.querySelector('.balance-card');
+  if (indicator) indicator.style.display = 'none';
+  if (card) card.classList.remove('is-paused');
+  updateCalendar();
+  updateCookingBtn();
+  const msg = val
+    ? '🍳 Du lagar maten själv nu! Mat kostar ~50% mindre.'
+    : '🏪 Du köper färdig mat igen. Dyrare men bekvämt.';
+  showToast(msg, val ? 'pos' : 'info');
+  addLog(val ? '🍳 Börjar laga maten hemma' : '🏪 Köper färdig mat igen', 0, null);
+  saveCurrentGame();
+}
+
+function updateCookingBtn() {
+  const btn = document.getElementById('cooking-btn');
+  if (!btn) return;
+  if (state.cookingAtHome) {
+    btn.textContent = '🍳 Lagar hemma ✓';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = '🏪 Köper mat';
+    btn.classList.remove('active');
+  }
+}
 
 function toggleManualPause() {
   if (!state.gameRunning) return;
