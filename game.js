@@ -728,6 +728,173 @@ const EVENTS = [
       { text: '😊 Äntligen!', detail: '+500 kr', effect: 500, type: 'positive', msg: 'Schysst kompis! +500 kr tillbaka.' },
     ],
   },
+  // ── EXTRA NYA HÄNDELSER ──
+  {
+    id: 'hittade_200',
+    emoji: '🤑🛣️',
+    title: 'Du hittade pengar på gatan!',
+    desc: 'Kolla vad du hittade! En vikta 200-kronorssedel på trottoaren. Ingen är i närheten.',
+    choices: [
+      { text: '💰 Plocka upp!', detail: '+200 kr', effect: 200, type: 'positive', msg: 'Lyckodagen! 🍀 +200 kr!' },
+    ],
+  },
+  {
+    id: 'hjalp_granne_hund',
+    emoji: '🐕🏃',
+    title: 'Grannen behöver hundvakt!',
+    desc: 'Grannen ska bort i helgen och behöver någon som tar hand om hunden Bella i tre dagar. Vad säger du?',
+    choices: [
+      { text: '🐕 Ja! Jag älskar hundar!', detail: '+450 kr', effect: 450, type: 'positive', msg: 'Bella är jättemysig! +450 kr för tre dagar. 🐾' },
+      { text: '😴 Nej, för jobbigt', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Kanske nästa gång!' },
+    ],
+  },
+  {
+    id: 'musikfestival',
+    emoji: '🎪🎶',
+    title: 'Skolans musikfestival!',
+    desc: 'Skolan anordnar en musikfestival med food trucks och livemusik. Inträde + mat = 180 kr.',
+    choices: [
+      { text: '🎶 Självklart, dit ska vi!', detail: '−180 kr', effect: -180, type: 'negative', msg: 'Vilken kul festival! 🎉' },
+      { text: '😊 Jag lyssnar utifrån gratis', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Man hör musiken ändå! +0 kr.' },
+    ],
+  },
+  {
+    id: 'brorsan_lanar',
+    emoji: '👦💸',
+    title: 'Brorsan vill låna pengar!',
+    desc: 'Din lillebror är sugen på glass men har inga pengar. Han tigger om 30 kr.',
+    choices: [
+      { text: '🍦 Okej, men bara denna gång!', detail: '−30 kr', effect: -30, type: 'negative', msg: 'Du är en snäll syskon! ❤️' },
+      { text: '😅 Nej, han får klara sig', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Egna pengar, egna regler!' },
+    ],
+  },
+  {
+    id: 'fest_hemma',
+    emoji: '🎉🏠',
+    title: 'Fest hemma!',
+    desc: 'Du ordnar en liten fest hemma med kompisarna. Snacks, läsk och spel kostar ca 300 kr.',
+    choices: [
+      { text: '🎉 Vi kör fest!', detail: '−300 kr', effect: -300, type: 'negative', msg: 'Bästa kvällen ever! 🎊' },
+      { text: '🎮 Vi spelar spel utan snacks', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Spelen är roliga ändå! Sparade 300 kr.' },
+    ],
+  },
+  {
+    id: 'vinterjacka',
+    emoji: '🧥❄️',
+    title: 'Vinterjackan gick sönder!',
+    desc: 'Dragkedjan på vinterjackan gick sönder mitt i kylan. Du kan laga den eller köpa ny.',
+    choices: [
+      { text: '🔧 Laga dragkedjan (100 kr)', detail: '−100 kr', effect: -100, type: 'negative', msg: 'Billig lösning! Bra tänkt.' },
+      { text: '🧥 Köp ny jacka (1 200 kr)', detail: '−1 200 kr', effect: -1200, type: 'negative', msg: 'Snygg ny jacka! Men dyr.' },
+      { text: '🥶 Använd fleecen', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Kallt men du sparar pengarna!' },
+    ],
+  },
+  {
+    id: 'tombola',
+    emoji: '🎟️🏆',
+    title: 'Du vann på tombolan!',
+    desc: 'Skolan hade tombola och du vann ett presentkort! Tur att du köpte en lott!',
+    choices: [
+      { text: '🎉 Wooooo!', detail: '+300 kr', effect: 300, type: 'positive', msg: 'Grattis! +300 kr i presentkort! 🎟️' },
+    ],
+  },
+  {
+    id: 'hjalp_farmor',
+    emoji: '🌸👵',
+    title: 'Farmor behöver hjälp!',
+    desc: 'Farmor behöver hjälp med att plantera blommor och rensa i trädgården. Jobbet tar två timmar.',
+    choices: [
+      { text: '🌸 Självklart! Jag hjälper farmor!', detail: '+250 kr', effect: 250, type: 'positive', msg: 'Farmor är jätteglad! Hon stoppar 250 kr i fickan på dig. ❤️' },
+      { text: '😬 Nej, har andra planer', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Farmor fixar det själv.' },
+    ],
+  },
+  {
+    id: 'spelturnering',
+    emoji: '🏆🎮',
+    title: 'Spelturnering på fritidsgården!',
+    desc: 'Det är en spelturnering på fritidsgården! Det kostar 100 kr att delta — men vinnaren får 1 000 kr!',
+    choices: [
+      { text: '🎮 Anmäl mig! (−100 kr)', detail: 'Chans på +1 000 kr!', effect: 'gamble', gambleAmt: 100, gambleOdds: 0.35, gambleWin: 1000, type: 'negative', msg: '...' },
+      { text: '👀 Tittar på istället (gratis)', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Kul att titta! Du sparade 100 kr.' },
+    ],
+  },
+  {
+    id: 'katten_sjuk',
+    emoji: '🐱💊',
+    title: 'Katten mår inte bra!',
+    desc: 'Din katt verkar halta och är ledsen. Veterinären kostar 900 kr men katten behöver hjälp.',
+    choices: [
+      { text: '🏥 Gå till veterinären', detail: '−900 kr', effect: -900, type: 'negative', msg: 'Katten är nu frisk! ❤️ Djur är ett ansvar.' },
+      { text: '🤞 Hoppas det går över', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Riskabelt... men du har pengarna kvar.' },
+    ],
+  },
+  {
+    id: 'extrajobb_kvall',
+    emoji: '🌙💼',
+    title: 'Extra jobb en kväll!',
+    desc: 'En granne behöver hjälp med att flytta möbler en fredag kväll. De betalar 500 kr!',
+    choices: [
+      { text: '💪 Jag tar jobbet!', detail: '+500 kr', effect: 500, type: 'positive', msg: 'Bra jobbat! 500 kr extra i fickan. 💪' },
+      { text: '😴 Nej, jag är trött', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Vila är viktigt också!' },
+    ],
+  },
+  {
+    id: 'mataffar_for_mycket',
+    emoji: '🛒😬',
+    title: 'Du köpte för mycket!',
+    desc: 'Du handlade mat utan lista och lade i massor av saker du inte behövde. 400 kr extra borta.',
+    choices: [
+      { text: '😬 Aj aj...', detail: '−400 kr', effect: -400, type: 'negative', msg: 'Läxa lärd: handla med lista! 📝' },
+    ],
+  },
+  {
+    id: 'kompis_bjuder_bio',
+    emoji: '🎬🎁',
+    title: 'Kompisen bjuder på bio!',
+    desc: 'Kompisen fick presenter-pengar och vill bjuda DIG på bio! Gratis!',
+    choices: [
+      { text: '🍿 Tack så mycket!', detail: '±0 kr', effect: 0, type: 'positive', msg: 'Gratis bio! Vad en schysst kompis! 🎬' },
+    ],
+  },
+  {
+    id: 'kläder_nödvändigt',
+    emoji: '👟🆕',
+    title: 'Skorna är utslitna!',
+    desc: 'Dina gymnastikskor har gått sönder och du behöver nya inför idrotten. Nya kostar 600 kr.',
+    choices: [
+      { text: '👟 Köp nya skor', detail: '−600 kr', effect: -600, type: 'negative', msg: 'Ibland måste man köpa det man behöver!' },
+      { text: '🔧 Laga med tejp ett tag till', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Håller ett tag till med lite tejp! 😄' },
+    ],
+  },
+  {
+    id: 'fritidsgard',
+    emoji: '🏓🎯',
+    title: 'Fritidsgården öppnade!',
+    desc: 'Fritidsgården har pingis, biljard och TV-spel — gratis! Men de säljer godis och läsk.',
+    choices: [
+      { text: '🏓 Åk dit + köp snacks (40 kr)', detail: '−40 kr', effect: -40, type: 'negative', msg: 'Kul kväll! Pingis-mästaren har slagit igen. 🏓' },
+      { text: '🎯 Åk dit utan att köpa något', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'Gratis nöje! Bra drag.' },
+      { text: '🏠 Stannar hemma', detail: '±0 kr', effect: 0, type: 'neutral', msg: 'En lugn kväll hemma.' },
+    ],
+  },
+  {
+    id: 'vann_lotteri',
+    emoji: '🎰🤑',
+    title: 'Du vann på skolans lotteri!',
+    desc: 'Du köpte en lott för 20 kr på skolans välgörenhetsdag... och vann 1 000 kr!',
+    choices: [
+      { text: '🎉 JAAAAAA!', detail: '+980 kr (vinst)', effect: 980, type: 'positive', msg: 'Du vann! +980 kr netto! 🎊' },
+    ],
+  },
+  {
+    id: 'prestkort_mormor',
+    emoji: '💌🎁',
+    title: 'Presentkort från mormor!',
+    desc: 'Mormor skickade ett presentkort på din favoritaffär — 500 kr att använda fritt!',
+    choices: [
+      { text: '😍 Tack mormor!', detail: '+500 kr', effect: 500, type: 'positive', msg: 'Snälla mormor! ❤️ +500 kr att shoppa för.' },
+    ],
+  },
 ];
 
 // Tips efter varje månad
@@ -1523,8 +1690,19 @@ function continueGame() {
   SFX.click();
   closeOverlay('overlay-month');
   const isLast = state.month >= TOTAL_MONTHS - 1;
+
+  // Check if goal was reached this month
+  if (state.goal && state.goal.amount && state.balance >= state.goal.amount) {
+    setTimeout(() => showGoalWonOverlay(), 300);
+    return;
+  }
+
   if (isLast) { state.gameRunning = false; saveCurrentGame(); setTimeout(showGameOver, 300); return; }
 
+  advanceMonth();
+}
+
+function advanceMonth() {
   state.month++;
   state.mIncome = state.mTax = state.mNetIncome = 0;
   state.mFixed  = state.mEvents = state.mRecurring = state.mFood = 0;
@@ -1537,6 +1715,73 @@ function continueGame() {
   saveCurrentGame();
   startMonthTimer(); scheduleNextEvent();
   if (state.job.interactive) scheduleNextInteraction();
+}
+
+function showGoalWonOverlay() {
+  stopMusic();
+  clearAllTimers();
+  // Big fanfare
+  const fanfare = [523,659,784,1047,1319,1047,1319,1568,2093];
+  fanfare.forEach((f, i) => playTone(f, 0.3, 'sine', 0.25, i * 0.12));
+  burstCoins(); burstCoins(); burstCoins();
+
+  const g = state.goal;
+  document.getElementById('goal-won-pill').textContent = `${g.emoji} ${g.name} — ${fmt(g.amount)}`;
+  document.getElementById('goal-won-msg').textContent =
+    `Du sparade ihop till ${g.name}! Det är INTE lätt — men du klarade det! 🌟`;
+
+  launchFireworks();
+  showOverlay('overlay-goal-won');
+}
+
+function launchFireworks() {
+  const container = document.getElementById('goal-won-fireworks');
+  container.innerHTML = '';
+  const emojis = ['🎆','🎇','✨','⭐','🌟','💥','🎊','🎉'];
+  for (let i = 0; i < 24; i++) {
+    const el = document.createElement('div');
+    el.className = 'fw-particle';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    const angle = (i / 24) * 360;
+    const dist = 80 + Math.random() * 120;
+    const dx = Math.cos(angle * Math.PI / 180) * dist;
+    const dy = Math.sin(angle * Math.PI / 180) * dist - 60;
+    el.style.cssText = `left:50%;top:50%;--dx:${dx}px;--dy:${dy}px;animation-delay:${Math.random()*600}ms`;
+    container.appendChild(el);
+  }
+  // Repeat fireworks
+  state._fwTimer = setInterval(() => {
+    if (!document.getElementById('overlay-goal-won') ||
+        document.getElementById('overlay-goal-won').style.display === 'none') {
+      clearInterval(state._fwTimer); return;
+    }
+    burstCoins();
+    const f2 = [523, 784, 1047, 1319];
+    f2.forEach((f, i) => playTone(f, 0.15, 'sine', 0.15, i * 0.08));
+  }, 2000);
+}
+
+function goalWonContinue() {
+  SFX.click();
+  clearInterval(state._fwTimer);
+  closeOverlay('overlay-goal-won');
+  const isLast = state.month >= TOTAL_MONTHS - 1;
+  if (isLast) { state.gameRunning = false; saveCurrentGame(); setTimeout(showGameOver, 300); return; }
+  // Clear goal so it doesn't trigger again, let them play on
+  state.goal = null;
+  updateGoalDisplay();
+  startMusic();
+  advanceMonth();
+}
+
+function goalWonSaveAndEnd() {
+  SFX.click();
+  clearInterval(state._fwTimer);
+  closeOverlay('overlay-goal-won');
+  state.gameRunning = false;
+  saveCurrentGame();
+  showToast('💾 Spelet är sparat! Bra jobbat! 🌟', 'pos');
+  setTimeout(() => showScreen('profiles'), 1500);
 }
 
 // ─────────────────────────────────────────

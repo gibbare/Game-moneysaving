@@ -970,6 +970,101 @@ html, body {
   100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
 }
 
+/* ── GOAL WON OVERLAY ───────────────────── */
+.goal-won-box {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #1a1a3e 0%, #0d0d1f 100%);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 40px rgba(255,215,0,0.3);
+  text-align: center;
+}
+.goal-won-fireworks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.fw-particle {
+  position: absolute;
+  font-size: 1.4rem;
+  transform: translate(-50%, -50%);
+  animation: fwBurst 1.2s ease-out forwards;
+}
+@keyframes fwBurst {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.2); opacity: 0; }
+}
+.goal-won-face {
+  font-size: 5rem;
+  position: relative;
+  z-index: 1;
+  animation: faceWiggle 0.6s ease-in-out infinite alternate;
+  margin-bottom: 0.25rem;
+}
+@keyframes faceWiggle {
+  from { transform: rotate(-8deg) scale(1); }
+  to   { transform: rotate(8deg) scale(1.1); }
+}
+.goal-won-title {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 0 20px rgba(255,215,0,0.6);
+  margin: 0 0 0.2rem;
+}
+.goal-won-sub {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+  margin: 0 0 0.75rem;
+}
+.goal-won-goal-pill {
+  display: inline-block;
+  background: rgba(255,215,0,0.18);
+  border: 1.5px solid var(--gold);
+  border-radius: 50px;
+  color: var(--gold);
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 0.4rem 1.1rem;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0.6rem;
+}
+.goal-won-stars {
+  font-size: 1.6rem;
+  letter-spacing: 0.15em;
+  position: relative;
+  z-index: 1;
+  animation: starPulse 1s ease-in-out infinite alternate;
+  margin-bottom: 0.5rem;
+}
+@keyframes starPulse {
+  from { opacity: 0.7; transform: scale(0.95); }
+  to   { opacity: 1;   transform: scale(1.08); }
+}
+.goal-won-msg {
+  color: var(--muted);
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 1;
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+.goal-won-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  position: relative;
+  z-index: 1;
+}
+
 /* ── BALANCE CARD PAUSE STATE ───────────── */
 .balance-card { cursor: pointer; transition: box-shadow 0.2s; }
 .balance-card:active { opacity: 0.85; }
