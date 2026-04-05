@@ -463,6 +463,28 @@ html, body {
   border-radius: 50px;
 }
 .topbar-controls { display: flex; gap: 0.4rem; }
+.now-playing {
+  position: absolute;
+  top: 58px;
+  right: 1rem;
+  background: rgba(255,215,0,0.15);
+  border: 1px solid rgba(255,215,0,0.35);
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+  z-index: 25;
+  white-space: nowrap;
+}
+.now-playing.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 /* ── HERO ROW (balance + goal bar) ─────── */
 .hero-row {

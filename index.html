@@ -125,11 +125,13 @@
       <div class="topbar-month" id="top-month">Månad 1/12</div>
     </div>
     <div class="topbar-controls">
-      <button class="btn-icon" onclick="toggleMusic()" id="music-btn" title="Musik">🎵</button>
-      <button class="btn-icon" onclick="toggleSound()" id="sound-btn" title="Ljud">🔊</button>
+      <button class="btn-icon" onclick="toggleMusic()" id="music-btn" title="Musik på/av">🎵</button>
+      <button class="btn-icon" onclick="nextTrack()" id="next-track-btn" title="Nästa låt">⏭️</button>
+      <button class="btn-icon" onclick="toggleSound()" id="sound-btn" title="Ljud på/av">🔊</button>
       <button class="btn-icon danger" onclick="confirmQuit()">✕</button>
     </div>
   </div>
+  <div id="now-playing" class="now-playing"></div>
 
   <!-- Balance + Goal row -->
   <div class="hero-row">
@@ -350,6 +352,9 @@
     <button class="btn btn-primary" onclick="closeExplanation()">Fortsätt spelet ▶</button>
   </div>
 </div>
+
+<!-- Background music (royalty-free, Kevin MacLeod – incompetech.com, CC BY 4.0) -->
+<audio id="bg-music" loop preload="none"></audio>
 
 <!-- Coin animation container -->
 <div id="coin-burst" class="coin-burst" aria-hidden="true"></div>

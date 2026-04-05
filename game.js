@@ -1127,7 +1127,7 @@ let state = {
   selectedAvatar: '😎', selectedJob: null,
   // Sound
   soundEnabled: true, musicEnabled: true,
-  audioCtx: null, musicTimeout: null,
+  audioCtx: null, currentTrack: 0,
   // UI
   overviewOpen: false,
 };
@@ -1135,15 +1135,24 @@ let state = {
 // ─────────────────────────────────────────
 //  SOUND & MUSIC
 // ─────────────────────────────────────────
+// ─────────────────────────────────────────
+//  MUSIC TRACKS (royalty-free, Kevin MacLeod)
+// ─────────────────────────────────────────
+const TRACKS = [
+  { name: 'Carefree',                emoji: '😊', url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Carefree.mp3' },
+  { name: 'Monkeys Spinning Monkeys', emoji: '🐒', url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Monkeys%20Spinning%20Monkeys.mp3' },
+  { name: 'Sneaky Snitch',           emoji: '🕵️', url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sneaky%20Snitch.mp3' },
+  { name: 'Pixelland',               emoji: '🎮', url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Pixelland.mp3' },
+  { name: 'Fluffing a Duck',         emoji: '🦆', url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fluffing%20a%20Duck.mp3' },
+];
+// Music by Kevin MacLeod (incompetech.com) — CC BY 4.0
+
 function initAudio() {
   if (state.audioCtx) return;
   try {
-    state.audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
-    // Master gain nodes — set to 0 to instantly mute without stopping oscillators
-    state.sfxGain   = state.audioCtx.createGain();
-    state.musicGain = state.audioCtx.createGain();
+    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    state.sfxGain  = state.audioCtx.createGain();
     state.sfxGain.connect(state.audioCtx.destination);
-    state.musicGain.connect(state.audioCtx.destination);
   } catch(e) {}
 }
 
@@ -1175,59 +1184,32 @@ const SFX = {
   food:   () => { playTone(440, 0.06); playTone(550, 0.1, 'sine', 0.12, 0.07); },
 };
 
-// Background music — cheerful looping melody
-const MUSIC_NOTES = [
-  [523, 0.2], [659, 0.2], [784, 0.2], [659, 0.2],
-  [523, 0.2], [392, 0.2], [440, 0.4],
-  [523, 0.2], [659, 0.2], [784, 0.2], [1047, 0.2],
-  [880, 0.2], [784, 0.4], [659, 0.4],
-  [523, 0.2], [440, 0.2], [392, 0.2], [440, 0.2],
-  [523, 0.4], [392, 0.2], [330, 0.6],
-];
-
-function playMusicBar() {
-  if (!state.audioCtx || !state.musicGain) return;
-  const ctx = state.audioCtx;
-  let t = ctx.currentTime + 0.05;
-  let totalDur = 0;
-
-  MUSIC_NOTES.forEach(([freq, dur]) => {
-    try {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      // Route through musicGain — muting musicGain silences instantly
-      osc.connect(gain); gain.connect(state.musicGain);
-      osc.type = 'triangle';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.06, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + dur - 0.03);
-      osc.start(t); osc.stop(t + dur);
-    } catch(e) {}
-    t += dur;
-    totalDur += dur;
-  });
-
-  state.musicTimeout = setTimeout(playMusicBar, totalDur * 1000 - 100);
-}
+function _audioEl() { return document.getElementById('bg-music'); }
 
 function startMusic() {
-  clearTimeout(state.musicTimeout);
-  if (!state.audioCtx || !state.musicGain) return;
-  state.musicGain.gain.value = (state.musicEnabled && state.soundEnabled) ? 1 : 0;
-  if (state.musicEnabled && state.soundEnabled) playMusicBar();
+  const el = _audioEl();
+  if (!el) return;
+  if (!state.musicEnabled || !state.soundEnabled) { el.pause(); return; }
+  const track = TRACKS[state.currentTrack];
+  if (!el.src || !el.src.includes(encodeURIComponent(track.name).replace(/%20/g,'%20'))) {
+    el.src = track.url;
+  }
+  el.volume = 0.4;
+  el.play().catch(() => {});
+  showNowPlaying(track);
 }
 
 function stopMusic() {
-  clearTimeout(state.musicTimeout);
-  if (state.musicGain) state.musicGain.gain.value = 0;
+  const el = _audioEl();
+  if (el) el.pause();
 }
 
 function toggleSound() {
   state.soundEnabled = !state.soundEnabled;
   document.getElementById('sound-btn').textContent = state.soundEnabled ? '🔊' : '🔇';
-  if (state.sfxGain)   state.sfxGain.gain.value   = state.soundEnabled ? 1 : 0;
-  if (state.musicGain) state.musicGain.gain.value  = (state.soundEnabled && state.musicEnabled) ? 1 : 0;
+  if (state.sfxGain) state.sfxGain.gain.value = state.soundEnabled ? 1 : 0;
   if (state.soundEnabled && state.musicEnabled) startMusic();
+  else stopMusic();
 }
 
 function toggleMusic() {
@@ -1235,8 +1217,29 @@ function toggleMusic() {
   const btn = document.getElementById('music-btn');
   btn.textContent = state.musicEnabled ? '🎵' : '🔕';
   btn.style.opacity = state.musicEnabled ? '1' : '0.5';
-  if (state.musicGain) state.musicGain.gain.value = (state.musicEnabled && state.soundEnabled) ? 1 : 0;
   if (state.musicEnabled && state.soundEnabled) startMusic();
+  else stopMusic();
+}
+
+function nextTrack() {
+  SFX.click();
+  state.currentTrack = (state.currentTrack + 1) % TRACKS.length;
+  const track = TRACKS[state.currentTrack];
+  const el = _audioEl();
+  if (el) {
+    el.src = track.url;
+    if (state.musicEnabled && state.soundEnabled) el.play().catch(() => {});
+  }
+  showNowPlaying(track);
+}
+
+function showNowPlaying(track) {
+  let pill = document.getElementById('now-playing');
+  if (!pill) return;
+  pill.textContent = `${track.emoji} ${track.name}`;
+  pill.classList.add('visible');
+  clearTimeout(pill._timer);
+  pill._timer = setTimeout(() => pill.classList.remove('visible'), 3000);
 }
 
 // ─────────────────────────────────────────
