@@ -441,12 +441,25 @@ html, body {
   font-size: 0.95rem;
 }
 .topbar-player span:first-child { font-size: 1.4rem; }
+.topbar-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+.topbar-year {
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .topbar-month {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--muted);
   background: var(--card2);
-  padding: 0.25rem 0.75rem;
+  padding: 0.2rem 0.65rem;
   border-radius: 50px;
 }
 .topbar-controls { display: flex; gap: 0.4rem; }

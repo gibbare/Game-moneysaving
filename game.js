@@ -927,6 +927,7 @@ let state = {
   activeProfileId: null,
   balance: STARTING_BALANCE,
   month: 0,
+  year: 1,
   gameRunning: false,
   paused: false,
   // Monthly tracking
@@ -1099,7 +1100,7 @@ function saveCurrentGame() {
     recurringCosts: state.recurringCosts,
     shownEventIds: state.shownEventIds,
     goal: state.goal, gameRunning: state.gameRunning,
-    cookingAtHome: state.cookingAtHome,
+    cookingAtHome: state.cookingAtHome, year: state.year,
   };
   saveProfiles();
 }
@@ -1195,7 +1196,7 @@ function restoreGameState(gs) {
     job: JOBS.find(j => j.id === gs.jobId) || JOBS[0],
     recurringCosts: gs.recurringCosts||[], shownEventIds: gs.shownEventIds||[],
     goal: gs.goal||null, gameRunning: gs.gameRunning,
-    cookingAtHome: gs.cookingAtHome || false,
+    cookingAtHome: gs.cookingAtHome || false, year: gs.year || 1,
   });
 }
 
@@ -1259,7 +1260,7 @@ function setCustomGoal() {
 function startGame(goal) {
   SFX.click();
   Object.assign(state, {
-    balance: STARTING_BALANCE, month: 0, gameRunning: true, paused: false,
+    balance: STARTING_BALANCE, month: 0, year: 1, gameRunning: true, paused: false,
     mIncome:0,mTax:0,mNetIncome:0,mFixed:0,mEvents:0,mRecurring:0,mFood:0,
     totalGross:0,totalTax:0,totalFixed:0,totalEventCosts:0,totalFood:0,
     savingsAccountBalance:0,savingsAccountInterest:0,
@@ -1374,15 +1375,8 @@ function triggerFoodPing(meal) {
   // Lunch deducted silently (visible in overview)
 }
 
-function showFoodToast(emoji, label, cost, day) {
-  const old = document.querySelector('.food-toast');
-  if (old) old.remove();
-  const t = document.createElement('div');
-  t.className = 'toast food-toast neg';
-  t.textContent = `${emoji} Dag ${day} — ${label}: −${fmt(cost)}`;
-  document.body.appendChild(t);
-  // Very short duration so 90 pings don't pile up
-  setTimeout(() => { t.style.transition = 'opacity 0.3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 900);
+function showFoodToast(_emoji, _label, _cost, _day) {
+  // Food notifications removed — visible in the event log instead
 }
 
 // ─────────────────────────────────────────
@@ -1475,7 +1469,6 @@ function missInteraction() {
   document.getElementById('interaction-banner').style.display = 'none';
   SFX.spend();
   const lbl = state.job.type === 'delivery' ? 'Leveransen missades! 😬' : 'Jobbet missades! 😬';
-  showToast(lbl, 'neg');
   addLog('😬 ' + lbl, 0, false);
   scheduleNextInteraction();
 }
@@ -1681,15 +1674,19 @@ function showMonthSummary() {
   resultEl.className   = net >= 0 ? 'positive' : 'negative';
   document.getElementById('sum-total').textContent = fmt(state.balance);
   document.getElementById('sum-tip').textContent = MONTH_TIPS[Math.floor(Math.random() * MONTH_TIPS.length)];
-  const isLast = state.month >= TOTAL_MONTHS - 1;
-  document.getElementById('sum-continue-btn').textContent = isLast ? 'Se årsresultat! 🏆' : 'Nästa månad →';
+  const isLastMonth = state.month >= TOTAL_MONTHS - 1;
+  if (isLastMonth) {
+    document.getElementById('sum-title').textContent = `År ${state.year} är slut! 🎊`;
+    document.getElementById('sum-continue-btn').textContent = `Starta År ${state.year + 1}! →`;
+  } else {
+    document.getElementById('sum-continue-btn').textContent = 'Nästa månad →';
+  }
   showOverlay('overlay-month');
 }
 
 function continueGame() {
   SFX.click();
   closeOverlay('overlay-month');
-  const isLast = state.month >= TOTAL_MONTHS - 1;
 
   // Check if goal was reached this month
   if (state.goal && state.goal.amount && state.balance >= state.goal.amount) {
@@ -1697,7 +1694,13 @@ function continueGame() {
     return;
   }
 
-  if (isLast) { state.gameRunning = false; saveCurrentGame(); setTimeout(showGameOver, 300); return; }
+  // Year rollover
+  if (state.month >= TOTAL_MONTHS - 1) {
+    state.year++;
+    state.month = -1; // advanceMonth will increment to 0
+    SFX.win();
+    addLog(`🎊 År ${state.year} börjar!`, 0, null);
+  }
 
   advanceMonth();
 }
@@ -1765,12 +1768,15 @@ function goalWonContinue() {
   SFX.click();
   clearInterval(state._fwTimer);
   closeOverlay('overlay-goal-won');
-  const isLast = state.month >= TOTAL_MONTHS - 1;
-  if (isLast) { state.gameRunning = false; saveCurrentGame(); setTimeout(showGameOver, 300); return; }
-  // Clear goal so it doesn't trigger again, let them play on
+  // Clear goal so it doesn't trigger again, let them play on freely
   state.goal = null;
   updateGoalDisplay();
   startMusic();
+  if (state.month >= TOTAL_MONTHS - 1) {
+    state.year++;
+    state.month = -1;
+    addLog(`🎊 År ${state.year} börjar!`, 0, null);
+  }
   advanceMonth();
 }
 
@@ -1905,8 +1911,10 @@ function updateBalance(bump = false) {
 }
 
 function updateTopBar() {
+  document.getElementById('top-year').textContent  = `År ${state.year}`;
   document.getElementById('top-month').textContent = `Månad ${state.month + 1}/${TOTAL_MONTHS}`;
-  document.getElementById('month-name-display').textContent = `${MONTH_NAMES[state.month]} 2025`;
+  const gameYear = 2024 + state.year;
+  document.getElementById('month-name-display').textContent = `${MONTH_NAMES[state.month]} ${gameYear}`;
 }
 
 function buildCalendar() {
@@ -2017,6 +2025,8 @@ function addLog(desc, amount, positive) {
 function clearLog() { document.getElementById('event-log').innerHTML = ''; }
 
 function showToast(msg, type = 'info') {
+  // Toasts suppressed during gameplay — messages go to the event log instead
+  if (state.gameRunning) return;
   const old = document.querySelector('.toast:not(.food-toast)');
   if (old) old.remove();
   const t = document.createElement('div');
