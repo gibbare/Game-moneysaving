@@ -1,7 +1,7 @@
 {
-  "name": "Livet som Spel",
-  "short_name": "Pengaspelet",
-  "description": "Lär dig hantera pengar och spara smart!",
+  "name": "Pengajakten",
+  "short_name": "Pengajakten",
+  "description": "Pengajakten – Jaga pengarna, nå drömmen!",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d0d1f",

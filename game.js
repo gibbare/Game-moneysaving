@@ -94,7 +94,10 @@ const JOBS = [
     deliveryInterval: [18000, 25000],
     deliveryAmount:   [1400, 1700, 2000, 2300, 2600],
     interactionTimeout: 8000,
-    badges: ['Bäst betalt', 'Tryck snabbt! 👆'],
+    interactionEmoji: '🚴',
+    interactionTitle: 'Ny leverans!',
+    interactionLog:   '🚴 Leverans klar!',
+    badges: ['Bra betalt', 'Tryck snabbt! 👆'],
     interactive: true,
   },
   {
@@ -105,12 +108,97 @@ const JOBS = [
     salary: 30000,
     salaryText: 'upp till 30 000 kr/månad',
     periodText: 'Du får betalt när du lämnar in ett jobb',
-    desc: 'Du sitter hemma och fixar datorer och appar åt folk. Bäst betalt av alla — men du måste lämna in dina jobb i tid!',
+    desc: 'Du sitter hemma och fixar datorer och appar åt folk. Bra betalt — men du måste lämna in dina jobb i tid!',
     type: 'freelancer',
     projectInterval: [28000, 45000],
     projectAmount:   [6000, 8000, 10000, 12000, 15000],
     interactionTimeout: 12000,
-    badges: ['Störst lön', 'Hög risk! ⚡'],
+    interactionEmoji: '💻',
+    interactionTitle: 'Projekt klart!',
+    interactionLog:   '💻 Jobb inlämnat!',
+    badges: ['Stor lön', 'Hög risk! ⚡'],
+    interactive: true,
+  },
+  {
+    id: 'truck',
+    emoji: '🚚',
+    name: 'Lastbilschaufför',
+    color: '#fd7943',
+    salary: 24000,
+    salaryText: '24 000 kr/månad',
+    periodText: 'Du får lön varje vecka',
+    desc: 'Du kör varor runt om i landet med en stor lastbil. Kul och frihet på vägarna — lönen trillar in varje vecka!',
+    type: 'weekly',
+    payInterval: 15000,
+    payAmount: 24000 / 4,
+    badges: ['Veckopeng', 'Friheten på vägen'],
+    interactive: false,
+  },
+  {
+    id: 'pilot',
+    emoji: '✈️',
+    name: 'Pilot',
+    color: '#38b6ff',
+    salary: 45000,
+    salaryText: '45 000 kr/månad',
+    periodText: 'Du får hela lönen sista dagen i månaden',
+    desc: 'Du flyger plan till hela världen! Absolut bäst betalt — men lönen kommer bara en gång i månaden och du måste hålla koll på utgifterna!',
+    type: 'monthly',
+    badges: ['Högst lön! 🏆', 'Vänta till slutet'],
+    interactive: false,
+  },
+  {
+    id: 'gardener',
+    emoji: '🌱',
+    name: 'Trädgårdsarbetare',
+    color: '#56ab2f',
+    salary: 13000,
+    salaryText: '13 000 kr/månad',
+    periodText: 'Du får lön varje vecka',
+    desc: 'Du sköter parker och trädgårdar, klipper gräs och planterar blommor. Lägst lön men lugnt och tryggt med pengarna varje vecka!',
+    type: 'weekly',
+    payInterval: 15000,
+    payAmount: 13000 / 4,
+    badges: ['Veckopeng', 'Lugnt & tryggt'],
+    interactive: false,
+  },
+  {
+    id: 'chef',
+    emoji: '👨‍🍳',
+    name: 'Kock',
+    color: '#f7971e',
+    salary: 19000,
+    salaryText: 'upp till 19 000 kr/månad',
+    periodText: 'Du får dricks direkt — tryck snabbt!',
+    desc: 'Du lagar mat på en restaurang och gästerna älskar din mat! Lön PLUS dricks — men du måste hinna trycka när dricksen trillar in!',
+    type: 'delivery',
+    deliveryInterval: [14000, 22000],
+    deliveryAmount:   [600, 800, 1000, 1300, 1600],
+    interactionTimeout: 7000,
+    interactionEmoji: '🍽️',
+    interactionTitle: 'Dricks från gästen!',
+    interactionLog:   '🍽️ Dricks!',
+    badges: ['Dricks direkt', 'Tryck snabbt! 👆'],
+    interactive: true,
+  },
+  {
+    id: 'firefighter',
+    emoji: '🚒',
+    name: 'Brandman',
+    color: '#e53935',
+    salary: 26000,
+    salaryText: 'upp till 26 000 kr/månad',
+    periodText: 'Lön i månaden + bonus vid larm — svara snabbt!',
+    desc: 'Du räddar liv och släcker bränder! Fast grundlön varje månad OCH bonuspengar när larmet går — men du måste svara DIREKT!',
+    type: 'firefighter',
+    salary: 26000,
+    deliveryInterval: [20000, 35000],
+    deliveryAmount:   [1000, 1500, 2000, 2500],
+    interactionTimeout: 6000,
+    interactionEmoji: '🚨',
+    interactionTitle: 'LARM! Ryck ut!',
+    interactionLog:   '🚒 Larm hanterat!',
+    badges: ['Fast lön + bonus', 'Svara på larmet! 🚨'],
     interactive: true,
   },
 ];
@@ -1132,13 +1220,15 @@ let baristaAccumulated = 0;
 
 function updatePayProgress() {
   const j = state.job;
-  if (j.type === 'monthly') {
+  if (j.type === 'monthly' || j.type === 'firefighter') {
     const pct = Math.min(state.monthElapsed / MONTH_DURATION, 1);
     const el = document.getElementById('pay-fill');
     if (el) el.style.width = (pct * 100) + '%';
     const currentDay = Math.floor(Math.min(state.monthElapsed / MONTH_DURATION, 1) * DAYS_PER_MONTH) + 1;
     const daysLeft = Math.max(0, DAYS_PER_MONTH - currentDay + 1);
-    document.getElementById('game-job-pay').textContent = `Lön om ${daysLeft} dagar`;
+    document.getElementById('game-job-pay').textContent = j.type === 'firefighter'
+      ? `Grundlön om ${daysLeft} dagar + larm-bonus!`
+      : `Lön om ${daysLeft} dagar`;
   }
   if (j.type === 'weekly') {
     const interval = j.payInterval;
@@ -1162,7 +1252,7 @@ function scheduleNextInteraction() {
   clearTimeout(state.interactionScheduled);
   if (!state.gameRunning) return;
   const j = state.job;
-  const range = j.type === 'delivery' ? j.deliveryInterval : j.projectInterval;
+  const range = j.deliveryInterval || j.projectInterval;
   const delay = range ? randBetween(range[0], range[1]) : 20000;
   state.interactionScheduled = setTimeout(() => {
     if (!state.gameRunning) return;
@@ -1172,12 +1262,12 @@ function scheduleNextInteraction() {
 
 function showInteraction() {
   const j = state.job;
-  const amount = randItem(j.type === 'delivery' ? j.deliveryAmount : j.projectAmount);
-  const isDelivery = j.type === 'delivery';
+  const pool = j.deliveryAmount || j.projectAmount || [1000];
+  const amount = randItem(pool);
   state.activeInteraction = { amount, timeout: j.interactionTimeout };
 
-  document.getElementById('int-emoji').textContent  = isDelivery ? '🚴' : '💻';
-  document.getElementById('int-title').textContent  = isDelivery ? 'Ny leverans!' : 'Projekt klart!';
+  document.getElementById('int-emoji').textContent  = j.interactionEmoji  || '💼';
+  document.getElementById('int-title').textContent  = j.interactionTitle  || 'Nytt uppdrag!';
   document.getElementById('int-amount').textContent = '+' + fmt(Math.round(amount * (1 - TAX_RATE))) + ' hem';
   document.getElementById('interaction-banner').style.display = 'block';
 
@@ -1200,7 +1290,7 @@ function acceptInteraction() {
   if (!state.activeInteraction) return;
   clearTimeout(state.interactionTimer);
   SFX.coin();
-  earnIncome(state.activeInteraction.amount, state.job.type === 'delivery' ? '🚴 Leverans klar!' : '💻 Jobb inlämnat!');
+  earnIncome(state.activeInteraction.amount, state.job.interactionLog || '💼 Uppdrag klart!');
   state.activeInteraction = null;
   document.getElementById('interaction-banner').style.display = 'none';
   burstCoins();
@@ -1381,8 +1471,8 @@ function endMonth() {
   state.recurringCosts.forEach(rc => { state.balance -= rc.amount; recurringTotal += rc.amount; });
   state.mRecurring = recurringTotal;
 
-  // Monthly job salary
-  if (state.job.type === 'monthly') {
+  // Monthly job salary (monthly and firefighter both get base salary at month end)
+  if (state.job.type === 'monthly' || state.job.type === 'firefighter') {
     const gross = state.job.salary;
     const tax   = Math.round(gross * TAX_RATE);
     const net   = gross - tax;
@@ -1608,7 +1698,7 @@ function updateJobCard() {
   const j = state.job;
   document.getElementById('game-job-emoji').textContent = j.emoji;
   document.getElementById('game-job-name').textContent  = j.name;
-  document.getElementById('pay-track').style.display    = (j.type === 'delivery' || j.type === 'freelancer') ? 'none' : 'block';
+  document.getElementById('pay-track').style.display    = j.interactive && j.type !== 'firefighter' ? 'none' : 'block';
 }
 
 function updateGoalDisplay() {

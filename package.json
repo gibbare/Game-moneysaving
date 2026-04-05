@@ -1,7 +1,7 @@
 {
-  "name": "livet-som-spel",
+  "name": "pengajakten",
   "version": "1.0.0",
-  "description": "Pengaspelet – Lär dig hantera pengar!",
+  "description": "Pengajakten – Jaga pengarna, nå drömmen!",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
