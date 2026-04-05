@@ -276,6 +276,7 @@ html, body {
   font-weight: 700;
 }
 .welcome-duration { color: var(--muted); font-size: 0.8rem; }
+.welcome-credit { color: rgba(255,255,255,0.18); font-size: 0.7rem; margin-top: 1.5rem; }
 
 /* ── PROFILES SCREEN ────────────────────── */
 .profiles-grid {
